@@ -4,36 +4,37 @@
 # Install with:
 #   pip install -r requirements.txt
 #
-# For RunPod GPU instances, the CUDA-enabled PyTorch is pre-installed.
-# If installing manually on a RunPod pod, use the CUDA-appropriate wheel:
-#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+# NOTE: torch, torchaudio, and torchvision must all be installed together
+# using the same CUDA wheel index to avoid version mismatches.
+# The setup_runpod.sh script handles this correctly.
 # ============================================================================
 
-# --- Core ML / Audio --------------------------------------------------------
-torch>=2.1.0
-torchaudio>=2.1.0
-transformers>=4.40.0          # CLAP via ClapModel + ClapProcessor
-accelerate>=0.27.0            # HuggingFace model loading acceleration
+# --- Core ML ----------------------------------------------------------------
+# Installed separately in setup_runpod.sh with the CUDA wheel index.
+# Minimum torch 2.6.0 required due to CVE-2025-32434 (torch.load safety fix).
+# torch>=2.6.0
+# torchaudio>=2.6.0
+# torchvision>=0.21.0
+
+# --- Transformers / HuggingFace ---------------------------------------------
+transformers>=4.40.0
+accelerate>=0.27.0
+huggingface-hub>=0.21.0
 
 # --- Audio processing -------------------------------------------------------
-librosa>=0.10.1               # feature extraction, loading, resampling
-soundfile>=0.12.1             # fast WAV/FLAC metadata read
-audioread>=3.0.0              # fallback audio decoder (MP3 etc.)
-# Note: MP3 support requires ffmpeg installed on the system:
-#   apt-get install ffmpeg  (Ubuntu/Debian)
-#   conda install -c conda-forge ffmpeg
+librosa>=0.10.1
+soundfile>=0.12.1
+audioread>=3.0.0
+# ffmpeg must be installed at the system level (apt-get install ffmpeg)
 
 # --- Data / Schema ----------------------------------------------------------
-pydantic>=2.5.0               # typed output schema + validation
+pydantic>=2.5.0
 numpy>=1.24.0
-pandas>=2.1.0                 # CSV handling
+pandas>=2.1.0
 
 # --- CLI / UX ---------------------------------------------------------------
-click>=8.1.0                  # CLI argument parsing
-rich>=13.7.0                  # terminal output formatting + progress bars
+click>=8.1.0
+rich>=13.7.0
 
 # --- Config -----------------------------------------------------------------
-pyyaml>=6.0.1                 # YAML config loading
-
-# --- Optional: faster HuggingFace downloads ---------------------------------
-huggingface-hub>=0.21.0
+pyyaml>=6.0.1
