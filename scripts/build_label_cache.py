@@ -8,7 +8,7 @@ to a .pt cache file.  Run this once after changing vocabulary.yaml.
 Usage
 -----
     python scripts/build_label_cache.py
-    python scripts/build_label_cache.py --vocab config/updated_vocab.yaml
+    python scripts/build_label_cache.py --vocab config/vocabulary.yaml
     python scripts/build_label_cache.py --force   # rebuild even if cache exists
 
 The cache is saved to the path specified in config/config.yaml under
