@@ -26,7 +26,10 @@ from .analysis.event_detector import (
     detect_events_from_full_clip,
 )
 from .analysis.description_synthesizer import synthesize_description, DescriptionResult
-from .output.schema import AudioAnalysisRecord, AudioMetadata, AcousticSummary
+from .output.schema import (
+    AudioAnalysisRecord, AudioMetadata, AcousticSummary,
+    build_suggested_filename,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -50,9 +53,17 @@ class AudioAnalysisPipeline:
         self.config = config
         self.tagger: Optional[CLAPTagger] = None
 
-        # Load vocabulary from config
+        # Load vocabulary from config (UCS lookups)
         self.candidate_labels: List[str] = config.get("candidate_labels", [])
         self.label_to_category: Dict[str, str] = config.get("label_to_category", {})
+        self.label_to_subcategory: Dict[str, str] = config.get("label_to_subcategory", {})
+        self.label_to_cat_id: Dict[str, str] = config.get("label_to_cat_id", {})
+        self.label_to_category_full: Dict[str, str] = config.get("label_to_category_full", {})
+
+        # UCS identity fields
+        self.ucs_creator_id: str = config.get("ucs_creator_id", "UNKNOWN")
+        self.ucs_source_id: str = config.get("ucs_source_id", "NONE")
+        self.ucs_user_data: str = config.get("ucs_user_data", "")
 
         # Pipeline settings
         self.target_sr: int = config.get("target_sr", CLAP_SAMPLE_RATE)
@@ -136,6 +147,9 @@ class AudioAnalysisPipeline:
             events=events,
             features=features,
             label_to_category=self.label_to_category,
+            label_to_subcategory=self.label_to_subcategory,
+            label_to_cat_id=self.label_to_cat_id,
+            label_to_category_full=self.label_to_category_full,
         )
 
         # --- 6. Assemble the output record -------------------------------
@@ -290,15 +304,33 @@ class AudioAnalysisPipeline:
             sorted(full_scores.items(), key=lambda x: x[1], reverse=True)[:10]
         )
 
+        # Build UCS suggested filename
+        suggested_filename = build_suggested_filename(
+            cat_id=description.cat_id,
+            fx_name=description.fx_name,
+            creator_id=self.ucs_creator_id,
+            source_id=self.ucs_source_id,
+            user_data=self.ucs_user_data,
+        )
+
         return AudioAnalysisRecord(
             file_name=af.file_name,
-            short_description=description.short_description,
-            detailed_description=description.detailed_description,
-            tags=description.tags,
+            # UCS core
+            category=description.category,
+            subcategory=description.subcategory,
+            cat_id=description.cat_id,
+            category_full=description.category_full,
+            fx_name=description.fx_name,
+            description=description.description,
+            keywords=description.keywords,
             sound_events=description.sound_events,
             confidence=description.confidence,
-            primary_label=description.primary_label,
-            primary_category=description.primary_category,
+            # UCS identity
+            creator_id=self.ucs_creator_id,
+            source_id=self.ucs_source_id,
+            user_data=self.ucs_user_data,
+            suggested_filename=suggested_filename,
+            # Internal
             top_labels=top_labels,
             metadata=metadata,
             acoustic_summary=acoustic_summary,

@@ -3,8 +3,8 @@ serializer.py
 -------------
 Saves an AudioAnalysisRecord (or a list of them) to:
   - JSON  (.json)
-  - CSV   (.csv)
-  - Markdown (.md) — single-record review format
+  - CSV   (.csv)   — UCS-aligned columns
+  - Markdown (.md) — single-record review format with UCS fields
 
 Each function writes to the specified output path and returns the path.
 """
@@ -15,7 +15,7 @@ import csv
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from .schema import AudioAnalysisRecord
 
@@ -39,7 +39,7 @@ def save_json(
     record      : the analysis result
     output_dir  : directory where the file is written
     full        : if True, include full metadata + acoustics;
-                  if False, write only core spec fields
+                  if False, write only UCS core fields
 
     Returns the path to the written file.
     """
@@ -77,20 +77,26 @@ def save_json_batch(
 
 
 # ---------------------------------------------------------------------------
-# CSV
+# CSV — UCS-aligned columns
 # ---------------------------------------------------------------------------
 
-# Columns to write in the CSV (flat format)
+# UCS-aligned CSV columns
 CSV_COLUMNS = [
     "file_name",
-    "duration_seconds",
-    "primary_category",
-    "primary_label",
-    "confidence",
-    "short_description",
-    "tags",
+    "cat_id",
+    "category",
+    "subcategory",
+    "category_full",
+    "fx_name",
+    "description",
+    "keywords",
     "sound_events",
-    "detailed_description",
+    "confidence",
+    "duration_seconds",
+    "creator_id",
+    "source_id",
+    "user_data",
+    "suggested_filename",
 ]
 
 
@@ -99,9 +105,9 @@ def save_csv(
     output_path: str | Path,
 ) -> Path:
     """
-    Save a list of records to a flat CSV file.
+    Save a list of records to a UCS-aligned flat CSV file.
 
-    Tags and sound_events are serialized as semicolon-separated strings.
+    Keywords and sound_events are serialized as semicolon-separated strings.
     """
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -110,14 +116,20 @@ def save_csv(
     for r in records:
         rows.append({
             "file_name": r.file_name,
-            "duration_seconds": round(r.metadata.duration_seconds, 2),
-            "primary_category": r.primary_category,
-            "primary_label": r.primary_label,
-            "confidence": r.confidence,
-            "short_description": r.short_description,
-            "tags": "; ".join(r.tags),
+            "cat_id": r.cat_id,
+            "category": r.category,
+            "subcategory": r.subcategory,
+            "category_full": r.category_full,
+            "fx_name": r.fx_name,
+            "description": r.description,
+            "keywords": "; ".join(r.keywords),
             "sound_events": "; ".join(r.sound_events),
-            "detailed_description": r.detailed_description,
+            "confidence": r.confidence,
+            "duration_seconds": round(r.metadata.duration_seconds, 2),
+            "creator_id": r.creator_id,
+            "source_id": r.source_id,
+            "user_data": r.user_data,
+            "suggested_filename": r.suggested_filename,
         })
 
     with open(output_path, "w", newline="", encoding="utf-8") as f:
@@ -155,8 +167,8 @@ def save_markdown(
 
 
 def _record_to_markdown(r: AudioAnalysisRecord) -> str:
-    """Format a single AudioAnalysisRecord as Markdown."""
-    tag_list = "\n".join(f"- `{t}`" for t in r.tags)
+    """Format a single AudioAnalysisRecord as UCS-aligned Markdown."""
+    keyword_list = "\n".join(f"- `{k}`" for k in r.keywords)
     event_list = "\n".join(f"{i+1}. {e}" for i, e in enumerate(r.sound_events))
 
     top_labels_rows = "\n".join(
@@ -169,11 +181,24 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
     lines = [
         f"# {r.file_name}",
         "",
-        f"> **{r.short_description}**",
+        f"> **{r.fx_name}**",
         "",
         "---",
         "",
-        "## Summary",
+        "## UCS Classification",
+        "",
+        f"| Field | Value |",
+        f"|---|---|",
+        f"| **CatID** | `{r.cat_id}` |",
+        f"| **Category** | {r.category} |",
+        f"| **SubCategory** | {r.subcategory} |",
+        f"| **CategoryFull** | {r.category_full} |",
+        f"| **CreatorID** | {r.creator_id} |",
+        f"| **SourceID** | {r.source_id} |",
+        f"| **UserData** | {r.user_data or '—'} |",
+        f"| **Suggested Filename** | `{r.suggested_filename}` |",
+        "",
+        "## File Info",
         "",
         f"| Field | Value |",
         f"|---|---|",
@@ -182,20 +207,22 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         f"| **Format** | {r.metadata.format.upper()} |",
         f"| **Sample Rate** | {r.metadata.sample_rate_hz} Hz |",
         f"| **Confidence** | {r.confidence:.3f} |",
-        f"| **Primary Category** | {r.primary_category} |",
-        f"| **Primary Label** | {r.primary_label} |",
+        "",
+        "## FXName",
+        "",
+        f"`{r.fx_name}`",
         "",
         "## Description",
         "",
-        r.detailed_description,
+        r.description,
         "",
         "## Sound Events",
         "",
         event_list if event_list else "_No distinct events detected._",
         "",
-        "## Tags",
+        "## Keywords",
         "",
-        tag_list if tag_list else "_No tags._",
+        keyword_list if keyword_list else "_No keywords._",
         "",
         "## CLAP Classification Scores",
         "",
@@ -216,7 +243,7 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         f"| Dynamic Range | {r.acoustic_summary.dynamic_range_db:.1f} dB |",
         f"| Dominant Band | {r.acoustic_summary.dominant_frequency_band} |",
         "",
-        f"---",
+        "---",
         f"_Analyzed at: {r.analyzed_at}_",
     ]
     return "\n".join(lines)

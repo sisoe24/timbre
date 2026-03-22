@@ -1,279 +1,734 @@
 # ============================================================================
-# Audio Analyzer — Controlled Vocabulary
+# Audio Analyzer — UCS (Universal Category System) Vocabulary
 # ============================================================================
 #
-# This file defines the candidate labels fed to CLAP for zero-shot
-# classification.  Every label belongs to exactly one category.
+# This file defines the CLAP candidate labels mapped to UCS categories and
+# subcategories. Each subcategory has:
+#
+#   cat_id  : UCS CatID (abbreviated Category + SubCategory)
+#   labels  : CLAP zero-shot text labels for this subcategory
+#
+# Structure
+# ---------
+#   categories:
+#     <CATEGORY>:                  # UCS Category (uppercase)
+#       <SUBCATEGORY>:             # UCS SubCategory (uppercase)
+#         cat_id: <CatID>          # UCS CatID abbreviation
+#         labels:                  # CLAP text labels (what is AUDIBLE)
+#           - "..."
 #
 # Guidelines
 # ----------
-# - Labels must be short, specific, and unambiguous
-# - Labels must describe what is AUDIBLE, not what might cause it
+# - Labels describe what is AUDIBLE — not the cause or context
+# - Labels must be specific and unambiguous for zero-shot classification
 # - Avoid labels that imply emotion, scene, or genre
-# - Prefer noun phrases over adjectives alone
-# - Add new labels in the appropriate category section
+# - Add new labels under the correct UCS subcategory
+# - No retraining required — CLAP is zero-shot
 #
-# To add a new label: add it under the correct category, then
-# re-run the pipeline (no retraining required — CLAP is zero-shot).
+# Reference: Universal Category System v8.2 — universalcategorysystem.com
 # ============================================================================
 
 categories:
 
   # --------------------------------------------------------------------------
-  # IMPACTS — short, transient, high-energy events
+  # IMPACTS — short, transient, high-energy impact sounds
   # --------------------------------------------------------------------------
-  impact:
-    - metallic impact
-    - metal hit
-    - metal clang
-    - metal scrape
-    - glass shatter
-    - glass break
-    - glass clink
-    - wooden impact
-    - wooden knock
-    - wooden crack
-    - hard surface impact
-    - concrete impact
-    - stone impact
-    - plastic impact
-    - body impact
-    - punch
-    - slap
-    - drum hit
-    - cymbal crash
-    - bass drum hit
-    - snare drum hit
-    - explosion
-    - gunshot
-    - firearm shot
-    - bullet impact
-    - hammer strike
-    - nail strike
+  IMPACTS:
+
+    METAL:
+      cat_id: IMPMtl
+      labels:
+        - metallic impact
+        - metal hit
+        - metal clang
+        - metal scrape
+        - metal strike
+
+    GLASS:
+      cat_id: IMPGls
+      labels:
+        - glass shatter
+        - glass break
+        - glass clink
+        - glass crack
+
+    WOOD:
+      cat_id: IMPWd
+      labels:
+        - wooden impact
+        - wooden knock
+        - wooden crack
+        - wood hit
+
+    HARD SURFACE:
+      cat_id: IMPHrd
+      labels:
+        - hard surface impact
+        - concrete impact
+        - stone impact
+        - rock hit
+
+    PLASTIC:
+      cat_id: IMPPls
+      labels:
+        - plastic impact
+        - plastic hit
+        - plastic crack
+
+    BODY:
+      cat_id: IMPBdy
+      labels:
+        - body impact
+        - punch
+        - slap
+        - flesh impact
+
+    PERCUSSIVE:
+      cat_id: IMPPrc
+      labels:
+        - drum hit
+        - cymbal crash
+        - bass drum hit
+        - snare drum hit
+        - hammer strike
+        - nail strike
+        - mallet hit
+
+    EXPLOSION:
+      cat_id: IMPExp
+      labels:
+        - explosion
+        - blast
+        - detonation
+        - bomb explosion
+
+    BULLET:
+      cat_id: IMPBlt
+      labels:
+        - bullet impact
+        - bullet hit
+        - ricochet
 
   # --------------------------------------------------------------------------
-  # MOVEMENT — sounds produced by physical movement or locomotion
+  # GUNS — firearm and weapon sounds
   # --------------------------------------------------------------------------
-  movement:
-    - footsteps on hard surface
-    - footsteps on gravel
-    - footsteps on wood
-    - footsteps on grass
-    - footsteps on sand
-    - running footsteps
-    - walking footsteps
-    - shuffling footsteps
-    - door opening
-    - door closing
-    - door slam
-    - door creak
-    - window opening
-    - drawer opening
-    - drawer closing
-    - zipper
-    - keys jingling
-    - paper rustling
-    - fabric rustling
-    - cloth movement
-    - chair scraping
-    - chair creak
-    - sliding sound
-    - dragging sound
-    - rolling object
+  GUNS:
+
+    SINGLE SHOT:
+      cat_id: GUNSngl
+      labels:
+        - gunshot
+        - firearm shot
+        - pistol shot
+        - rifle shot
+        - single gunshot
+
+    AUTOMATIC:
+      cat_id: GUNAuto
+      labels:
+        - automatic gunfire
+        - machine gun fire
+        - rapid gunfire
+        - burst of gunfire
+
+    MECHANICAL:
+      cat_id: GUNMech
+      labels:
+        - gun reload
+        - gun mechanism
+        - gun cock
+        - magazine click
 
   # --------------------------------------------------------------------------
-  # AMBIENCE — continuous or slowly changing environmental backgrounds
+  # FOOTSTEPS — foot movement and locomotion sounds
   # --------------------------------------------------------------------------
-  ambience:
-    - indoor ambience
-    - outdoor ambience
-    - room tone
-    - office ambience
-    - crowd murmur
-    - restaurant ambience
-    - street ambience
-    - urban background noise
-    - park ambience
-    - forest ambience
-    - river ambience
-    - ocean waves
-    - beach ambience
-    - wind ambience
-    - gentle breeze
-    - cave reverb
-    - empty room
-    - underground ambience
+  FOOTSTEPS:
+
+    HARD SURFACE:
+      cat_id: FSTEPHrd
+      labels:
+        - footsteps on hard surface
+        - footsteps on tile
+        - footsteps on concrete
+
+    GRAVEL:
+      cat_id: FSTEPGrvl
+      labels:
+        - footsteps on gravel
+        - footsteps on stones
+        - footsteps on pebbles
+
+    WOOD:
+      cat_id: FSTEPWd
+      labels:
+        - footsteps on wood
+        - footsteps on floorboards
+        - footsteps on hardwood
+
+    GRASS:
+      cat_id: FSTEPGrss
+      labels:
+        - footsteps on grass
+        - footsteps on leaves
+        - footsteps on dirt
+
+    SAND:
+      cat_id: FSTEPSnd
+      labels:
+        - footsteps on sand
+        - footsteps on soft ground
+
+    MISC:
+      cat_id: FSTEPMsc
+      labels:
+        - running footsteps
+        - walking footsteps
+        - shuffling footsteps
+        - slow footsteps
+        - fast footsteps
 
   # --------------------------------------------------------------------------
-  # WEATHER — atmospheric and environmental sounds
+  # DOORS — door, window, and entry/exit sounds
   # --------------------------------------------------------------------------
-  weather:
-    - rain
-    - heavy rain
-    - light rain
-    - rain on roof
-    - rain on window
-    - thunder
-    - distant thunder
-    - storm
-    - wind
-    - strong wind
-    - wind howl
-    - hail
-    - snow ambience
-    - ice cracking
+  DOORS:
+
+    DOOR:
+      cat_id: DOORDr
+      labels:
+        - door opening
+        - door closing
+        - door slam
+        - door creak
+        - door latch
+        - door knock
+
+    WINDOW:
+      cat_id: DOORWn
+      labels:
+        - window opening
+        - window closing
+        - window latch
 
   # --------------------------------------------------------------------------
-  # MACHINERY — mechanical and industrial sounds
+  # FOLEY — everyday object handling and surface interaction sounds
   # --------------------------------------------------------------------------
-  machinery:
-    - engine running
-    - engine idle
-    - engine rev
-    - diesel engine
-    - electric motor
-    - mechanical hum
-    - motor buzz
-    - fan noise
-    - air conditioner
-    - ventilation
-    - pump sound
-    - compressor
-    - hydraulic
-    - pneumatic
-    - drill
-    - saw cutting
-    - grinding metal
-    - conveyor belt
-    - gear mechanism
-    - clicking mechanism
-    - electrical buzzing
-    - electrical hum
-    - power line buzz
+  FOLEY:
+
+    FABRIC:
+      cat_id: FOLFbrc
+      labels:
+        - fabric rustling
+        - cloth movement
+        - clothing rustle
+        - zipper
+
+    METAL:
+      cat_id: FOLMtl
+      labels:
+        - keys jingling
+        - coins rattling
+        - metal object handling
+
+    PAPER:
+      cat_id: FOLPpr
+      labels:
+        - paper rustling
+        - paper turning
+        - newspaper rustle
+
+    FURNITURE:
+      cat_id: FOLFrn
+      labels:
+        - drawer opening
+        - drawer closing
+        - chair scraping
+        - chair creak
+        - furniture movement
+
+    MOVEMENT:
+      cat_id: FOLMvmt
+      labels:
+        - sliding sound
+        - dragging sound
+        - rolling object
+        - object sliding on surface
 
   # --------------------------------------------------------------------------
-  # VEHICLES — transportation-related sounds
+  # AMBIENCE — continuous environmental background sounds
   # --------------------------------------------------------------------------
-  vehicles:
-    - car passing
-    - car acceleration
-    - car braking
-    - car horn
-    - truck passing
-    - motorcycle
-    - bicycle
-    - train passing
-    - train horn
-    - aircraft flyover
-    - helicopter
-    - boat engine
-    - car door closing
-    - tire screech
-    - traffic
+  AMBIENCE:
+
+    INDOOR:
+      cat_id: AMBInd
+      labels:
+        - indoor ambience
+        - room tone
+        - office ambience
+        - empty room
+        - interior background
+        - underground ambience
+
+    OUTDOOR:
+      cat_id: AMBOut
+      labels:
+        - outdoor ambience
+        - park ambience
+        - forest ambience
+        - beach ambience
+        - open air ambience
+
+    URBAN:
+      cat_id: AMBUrbn
+      labels:
+        - street ambience
+        - urban background noise
+        - restaurant ambience
+        - crowd murmur
+        - city ambience
+
+    NATURE:
+      cat_id: AMBNtr
+      labels:
+        - river ambience
+        - ocean waves
+        - cave ambience
+        - wind ambience
+        - gentle breeze
 
   # --------------------------------------------------------------------------
-  # VOICES — human vocal and speech sounds
+  # WEATHER — atmospheric and environmental weather sounds
   # --------------------------------------------------------------------------
-  voices:
-    - speech
-    - conversation
-    - single voice speaking
-    - multiple voices speaking
-    - whispering
-    - shouting
-    - crowd talking
-    - laughter
-    - singing
-    - humming
-    - coughing
-    - breathing
-    - crowd cheer
+  WEATHER:
+
+    RAIN:
+      cat_id: WTHRRn
+      labels:
+        - rain
+        - heavy rain
+        - light rain
+        - rain on roof
+        - rain on window
+        - drizzle
+
+    THUNDER:
+      cat_id: WTHRThdr
+      labels:
+        - thunder
+        - distant thunder
+        - thunderclap
+        - storm
+
+    WIND:
+      cat_id: WTHRWnd
+      labels:
+        - wind
+        - strong wind
+        - wind howl
+        - wind gust
+
+    MISC:
+      cat_id: WTHRMsc
+      labels:
+        - hail
+        - snow ambience
+        - ice cracking
+        - sleet
 
   # --------------------------------------------------------------------------
-  # WATER — liquid and fluid sounds
+  # MACHINE — mechanical and industrial sounds
   # --------------------------------------------------------------------------
-  water:
-    - water dripping
-    - water flowing
-    - water splash
-    - running water
-    - waterfall
-    - bubbling water
-    - pouring liquid
-    - water impact
+  MACHINE:
+
+    ENGINE:
+      cat_id: MCHEng
+      labels:
+        - engine running
+        - engine idle
+        - engine rev
+        - diesel engine
+        - engine startup
+
+    ELECTRIC:
+      cat_id: MCHElc
+      labels:
+        - electric motor
+        - mechanical hum
+        - motor buzz
+        - electrical buzzing
+        - electrical hum
+        - power line buzz
+
+    HVAC:
+      cat_id: MCHHVAC
+      labels:
+        - fan noise
+        - air conditioner
+        - ventilation
+        - air vent
+
+    INDUSTRIAL:
+      cat_id: MCHInd
+      labels:
+        - pump sound
+        - compressor
+        - hydraulic
+        - pneumatic
+        - drill
+        - saw cutting
+        - grinding metal
+        - conveyor belt
+        - gear mechanism
+        - clicking mechanism
 
   # --------------------------------------------------------------------------
-  # ANIMALS — natural creature sounds
+  # VEHICLES — transportation and vehicle sounds
   # --------------------------------------------------------------------------
-  animals:
-    - bird chirping
-    - bird song
-    - birds in background
-    - dog bark
-    - cat meow
-    - insect ambience
-    - crickets
-    - frog sound
-    - animal movement
+  VEHICLES:
+
+    CAR:
+      cat_id: VEHCar
+      labels:
+        - car passing
+        - car acceleration
+        - car braking
+        - car horn
+        - car door closing
+        - tire screech
+
+    TRUCK:
+      cat_id: VEHTrck
+      labels:
+        - truck passing
+        - truck engine
+        - heavy vehicle
+
+    MOTORCYCLE:
+      cat_id: VEHMoto
+      labels:
+        - motorcycle
+        - motorcycle engine
+        - motorbike
+
+    BICYCLE:
+      cat_id: VEHBcyl
+      labels:
+        - bicycle
+        - bicycle wheel
+        - bike sound
+
+    TRAIN:
+      cat_id: VEHTrn
+      labels:
+        - train passing
+        - train horn
+        - train wheels
+        - railway sound
+
+    AIRCRAFT:
+      cat_id: VEHAir
+      labels:
+        - aircraft flyover
+        - airplane engine
+        - jet plane
+
+    HELICOPTER:
+      cat_id: VEHHeli
+      labels:
+        - helicopter
+        - helicopter blades
+        - rotor sound
+
+    BOAT:
+      cat_id: VEHBt
+      labels:
+        - boat engine
+        - ship engine
+        - marine engine
+
+    TRAFFIC:
+      cat_id: VEHTrfc
+      labels:
+        - traffic
+        - busy road
+        - highway noise
 
   # --------------------------------------------------------------------------
-  # TEXTURES — sustained, textural, or continuous tonal sounds
+  # HUMAN — human vocal and body sounds
   # --------------------------------------------------------------------------
-  textures:
-    - low rumble
-    - deep bass rumble
-    - sub-bass tone
-    - high-pitched tone
-    - pure sine tone
-    - noise burst
-    - white noise
-    - brown noise
-    - hiss
-    - static noise
-    - crackle
-    - pops and clicks
-    - vinyl crackle
-    - digital glitch
-    - interference noise
+  HUMAN:
+
+    SPEECH:
+      cat_id: HMNSpch
+      labels:
+        - speech
+        - single voice speaking
+        - person talking
+        - narration
+
+    CONVERSATION:
+      cat_id: HMNConv
+      labels:
+        - conversation
+        - multiple voices speaking
+        - dialogue
+        - interview
+
+    CROWD:
+      cat_id: HMNCrwd
+      labels:
+        - crowd talking
+        - crowd murmur
+        - crowd cheer
+        - crowd applause
+
+    VOCAL:
+      cat_id: HMNVcl
+      labels:
+        - whispering
+        - shouting
+        - singing
+        - humming
+        - laughter
+        - vocal sound
+
+    BODY:
+      cat_id: HMNBdy
+      labels:
+        - coughing
+        - breathing
+        - sneezing
+        - heartbeat
 
   # --------------------------------------------------------------------------
-  # MUSIC — musical and tonal instrumental sounds
+  # WATER — liquid, fluid, and water-related sounds
   # --------------------------------------------------------------------------
-  music:
-    - piano notes
-    - guitar strum
-    - bass guitar
-    - violin
-    - brass instrument
-    - woodwind instrument
-    - synthesizer
-    - electronic beat
-    - musical chord
-    - musical melody
-    - percussion pattern
-    - rhythmic beat
+  WATER:
+
+    DRIPS:
+      cat_id: WTRDrp
+      labels:
+        - water dripping
+        - dripping tap
+        - water drop
+
+    FLOWING:
+      cat_id: WTRFlw
+      labels:
+        - water flowing
+        - running water
+        - stream sound
+
+    SPLASH:
+      cat_id: WTRSplsh
+      labels:
+        - water splash
+        - water impact
+        - splash sound
+
+    FALLS:
+      cat_id: WTRFls
+      labels:
+        - waterfall
+        - cascading water
+        - large waterfall
+
+    BUBBLING:
+      cat_id: WTRBbl
+      labels:
+        - bubbling water
+        - boiling water
+        - water gurgle
+
+    POUR:
+      cat_id: WTRPr
+      labels:
+        - pouring liquid
+        - pouring water
+        - liquid pour
 
   # --------------------------------------------------------------------------
-  # ALERTS & SIGNALS — intentional signal sounds
+  # ANIMALS — natural creature and wildlife sounds
   # --------------------------------------------------------------------------
-  alerts:
-    - alarm beep
-    - notification sound
-    - phone ringing
-    - door bell
-    - buzzer
-    - siren
-    - emergency alarm
-    - electronic beep
-    - click sound
-    - button press
+  ANIMALS:
+
+    BIRDS:
+      cat_id: ANMLBrd
+      labels:
+        - bird chirping
+        - bird song
+        - birds in background
+        - bird call
+        - birdsong
+
+    DOGS:
+      cat_id: ANMLDg
+      labels:
+        - dog bark
+        - dog whine
+        - dog growl
+
+    CATS:
+      cat_id: ANMLCt
+      labels:
+        - cat meow
+        - cat purr
+        - cat hiss
+
+    INSECTS:
+      cat_id: ANMLIns
+      labels:
+        - insect ambience
+        - crickets
+        - cicadas
+        - buzzing insect
+
+    AMPHIBIANS:
+      cat_id: ANMLAmph
+      labels:
+        - frog sound
+        - frog call
+        - toad call
+
+    MISC:
+      cat_id: ANMLMsc
+      labels:
+        - animal movement
+        - wildlife sound
+        - creature sound
 
   # --------------------------------------------------------------------------
-  # BACKGROUND — non-specific or residual background content
+  # DESIGNED — textural, synthetic, and designed sound elements
   # --------------------------------------------------------------------------
-  background:
-    - background noise
-    - low-level noise
-    - silence
-    - near-silence
-    - room noise
+  DESIGNED:
+
+    RUMBLE:
+      cat_id: DESRmbl
+      labels:
+        - low rumble
+        - deep bass rumble
+        - sub-bass rumble
+        - low frequency drone
+
+    TONE:
+      cat_id: DESTn
+      labels:
+        - sub-bass tone
+        - high-pitched tone
+        - pure sine tone
+        - white noise
+        - brown noise
+        - hiss
+        - static noise
+
+    GLITCH:
+      cat_id: DESGltch
+      labels:
+        - noise burst
+        - crackle
+        - pops and clicks
+        - vinyl crackle
+        - digital glitch
+        - interference noise
+        - audio artifact
+
+  # --------------------------------------------------------------------------
+  # MUSIC ELEMENTS — musical and tonal instrumental sounds
+  # --------------------------------------------------------------------------
+  MUSIC ELEMENTS:
+
+    KEYS:
+      cat_id: MUSCKys
+      labels:
+        - piano notes
+        - keyboard notes
+        - piano playing
+
+    STRINGS:
+      cat_id: MUSCStr
+      labels:
+        - guitar strum
+        - bass guitar
+        - violin
+        - string instrument
+
+    BRASS:
+      cat_id: MUSCBrs
+      labels:
+        - brass instrument
+        - trumpet
+        - trombone
+
+    WOODWIND:
+      cat_id: MUSCWwd
+      labels:
+        - woodwind instrument
+        - flute
+        - clarinet
+
+    ELECTRONIC:
+      cat_id: MUSCElc
+      labels:
+        - synthesizer
+        - electronic beat
+        - synth pad
+        - electronic music
+
+    PERCUSSION:
+      cat_id: MUSCPrc
+      labels:
+        - percussion pattern
+        - rhythmic beat
+        - musical chord
+        - musical melody
+        - drum pattern
+
+  # --------------------------------------------------------------------------
+  # ALERTS — intentional signal and notification sounds
+  # --------------------------------------------------------------------------
+  ALERTS:
+
+    ALARM:
+      cat_id: ALRTAlrm
+      labels:
+        - alarm beep
+        - emergency alarm
+        - siren
+        - buzzer
+        - fire alarm
+
+    NOTIFICATION:
+      cat_id: ALRTNtf
+      labels:
+        - notification sound
+        - phone ringing
+        - door bell
+        - electronic beep
+        - ping sound
+
+    INTERFACE:
+      cat_id: ALRTInt
+      labels:
+        - click sound
+        - button press
+        - UI click
+        - interface sound
+
+  # --------------------------------------------------------------------------
+  # BACKGROUND — non-specific residual background content
+  # --------------------------------------------------------------------------
+  BACKGROUND:
+
+    NOISE:
+      cat_id: BGNDNs
+      labels:
+        - background noise
+        - low-level noise
+        - room noise
+        - ambient noise floor
+
+    SILENCE:
+      cat_id: BGNDSil
+      labels:
+        - silence
+        - near-silence
+        - quiet room

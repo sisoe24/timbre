@@ -2,22 +2,32 @@
 description_synthesizer.py
 --------------------------
 Converts structured analysis results (CLAP tags, acoustic features, events)
-into clean, human-readable descriptions for audio cataloging.
+into UCS-compliant metadata fields for audio cataloging.
+
+UCS output fields
+-----------------
+- fx_name       : Brief title ~25 chars (UCS FXName)
+- description   : Long-form description (UCS Description)
+- keywords      : Search terms (UCS Keywords)
+- sound_events  : Ordered temporal event labels
+- category      : UCS Category (e.g. "IMPACTS")
+- subcategory   : UCS SubCategory (e.g. "METAL")
+- cat_id        : UCS CatID (e.g. "IMPMtl")
+- category_full : "IMPACTS-METAL"
+- confidence    : Overall confidence score
 
 Design principles
 -----------------
 - NO emotion, genre, or cinematic interpretation
 - NO hallucination — only describe what CLAP and features confirm
 - Conservative wording when confidence is low
-- Consistent vocabulary (uses the controlled vocabulary from config)
-- Outputs both a short_description (1 sentence) and a detailed_description
-- Generates a final confidence score based on CLAP agreement + acoustic signals
+- FXName is title-style, ~25 chars, plain language
+- Description is 2-4 sentences, factual and acoustic-detail-rich
 """
 
 from __future__ import annotations
 
 import logging
-import random
 from dataclasses import dataclass
 from typing import Dict, List, Optional, Tuple
 
@@ -31,24 +41,26 @@ HIGH_CONFIDENCE = 0.70
 MEDIUM_CONFIDENCE = 0.45
 LOW_CONFIDENCE = 0.25
 
-# Max tags to include in output
-MAX_TAGS = 10
+# Max keywords to include in output
+MAX_KEYWORDS = 12
 
 
 @dataclass
 class DescriptionResult:
     """
-    Structured output from the description synthesizer.
+    UCS-compliant output from the description synthesizer.
     Ready for serialization to JSON/CSV/Markdown.
     """
 
-    short_description: str
-    detailed_description: str
-    tags: List[str]
-    sound_events: List[str]   # human-readable event labels (ordered)
+    fx_name: str               # UCS FXName (~25 chars, title style)
+    description: str           # UCS Description (long-form)
+    keywords: List[str]        # UCS Keywords (search terms)
+    sound_events: List[str]    # ordered event labels
     confidence: float
-    primary_category: str     # top-level category (e.g., "impact", "ambience")
-    primary_label: str        # most confident CLAP label
+    category: str              # UCS Category
+    subcategory: str           # UCS SubCategory
+    cat_id: str                # UCS CatID
+    category_full: str         # "CATEGORY-SUBCATEGORY"
 
 
 def synthesize_description(
@@ -57,22 +69,33 @@ def synthesize_description(
     events: List[SoundEvent],
     features: AcousticFeatures,
     label_to_category: Dict[str, str],
+    label_to_subcategory: Dict[str, str] = None,
+    label_to_cat_id: Dict[str, str] = None,
+    label_to_category_full: Dict[str, str] = None,
 ) -> DescriptionResult:
     """
-    Build a DescriptionResult from CLAP scores, detected events, and acoustic features.
+    Build a UCS DescriptionResult from CLAP scores, detected events,
+    and acoustic features.
 
     Parameters
     ----------
-    file_name        : base file name (for logging)
-    full_scores      : CLAP zero-shot scores for all candidate labels
-    events           : temporal sound events from the event detector
-    features         : acoustic features from the feature extractor
-    label_to_category: controlled vocabulary mapping
+    file_name              : base file name (for logging)
+    full_scores            : CLAP zero-shot scores for all candidate labels
+    events                 : temporal sound events from the event detector
+    features               : acoustic features from the feature extractor
+    label_to_category      : label → UCS Category
+    label_to_subcategory   : label → UCS SubCategory
+    label_to_cat_id        : label → UCS CatID
+    label_to_category_full : label → "CATEGORY-SUBCATEGORY"
 
     Returns
     -------
     DescriptionResult ready for output serialization
     """
+    # Provide empty dicts as defaults for optional maps
+    label_to_subcategory = label_to_subcategory or {}
+    label_to_cat_id = label_to_cat_id or {}
+    label_to_category_full = label_to_category_full or {}
 
     # --- 1. Identify top labels and primary sound -------------------------
     sorted_labels = sorted(full_scores.items(), key=lambda x: x[1], reverse=True)
@@ -83,7 +106,14 @@ def synthesize_description(
         top_labels = sorted_labels[:3] if sorted_labels else [("unidentified sound", 0.1)]
 
     primary_label, primary_score = top_labels[0]
-    primary_category = label_to_category.get(primary_label, "unknown")
+
+    # UCS classification for primary label
+    category = label_to_category.get(primary_label, "BACKGROUND")
+    subcategory = label_to_subcategory.get(primary_label, "NOISE")
+    cat_id = label_to_cat_id.get(primary_label, "BGNDNs")
+    category_full = label_to_category_full.get(
+        primary_label, f"{category}-{subcategory}"
+    )
 
     # --- 2. Compute overall confidence -----------------------------------
     confidence = _compute_confidence(
@@ -93,37 +123,36 @@ def synthesize_description(
         events=events,
     )
 
-    # --- 3. Build tags ---------------------------------------------------
-    tags = _build_tags(
+    # --- 3. Build keywords -----------------------------------------------
+    keywords = _build_keywords(
         top_labels=top_labels,
         features=features,
-        primary_category=primary_category,
-        max_tags=MAX_TAGS,
+        category=category,
+        subcategory=subcategory,
+        max_keywords=MAX_KEYWORDS,
     )
 
     # --- 4. Build sound events list (human-readable) --------------------
     if events:
-        # Use temporal events if detected
         sound_event_labels = _deduplicate_preserve_order(
             [e.label for e in events if e.label != "background noise"]
         )
     else:
-        # Fall back to top CLAP labels
         sound_event_labels = [l for l, _ in top_labels[:5]]
 
-    # --- 5. Synthesize descriptions --------------------------------------
-    short_description = _build_short_description(
+    # --- 5. Synthesize UCS FXName (title, ~25 chars) --------------------
+    fx_name = _build_fx_name(
         primary_label=primary_label,
-        primary_category=primary_category,
         primary_score=primary_score,
         top_labels=top_labels,
         features=features,
         events=events,
     )
 
-    detailed_description = _build_detailed_description(
+    # --- 6. Synthesize UCS Description (long-form) ----------------------
+    description = _build_description(
         primary_label=primary_label,
-        primary_category=primary_category,
+        category=category,
         top_labels=top_labels,
         features=features,
         events=events,
@@ -131,71 +160,92 @@ def synthesize_description(
     )
 
     return DescriptionResult(
-        short_description=short_description,
-        detailed_description=detailed_description,
-        tags=tags,
+        fx_name=fx_name,
+        description=description,
+        keywords=keywords,
         sound_events=sound_event_labels,
         confidence=round(confidence, 3),
-        primary_category=primary_category,
-        primary_label=primary_label,
+        category=category,
+        subcategory=subcategory,
+        cat_id=cat_id,
+        category_full=category_full,
     )
 
 
 # ---------------------------------------------------------------------------
-# Short description builder
+# FXName builder (UCS: brief title, ~25 chars)
 # ---------------------------------------------------------------------------
 
-def _build_short_description(
+def _build_fx_name(
     primary_label: str,
-    primary_category: str,
     primary_score: float,
     top_labels: List[Tuple[str, float]],
     features: AcousticFeatures,
     events: List[SoundEvent],
 ) -> str:
     """
-    Construct a single-sentence description of the audio.
-    Uses temporal events when available; falls back to CLAP labels + acoustic cues.
+    Construct a UCS FXName: a brief title ~25 characters.
+
+    Strategy
+    --------
+    - Use temporal event sequence if multiple distinct events exist
+    - Otherwise: primary label + a key acoustic qualifier
+    - Always title-case, no trailing punctuation
+    - Aim for ≤25 chars; hard-trim at 50
     """
 
-    # --- Case 1: temporal event sequence detected -----------------------
+    # Case 1: temporal sequence
     if len(events) >= 2:
         notable = [e for e in events if e.label != "background noise"]
         if len(notable) >= 2:
-            first = notable[0].label
-            second = notable[1].label
-            if len(notable) == 2:
-                return _capitalize(f"{first}, followed by {second}.")
-            else:
-                remainder = ", then ".join(e.label for e in notable[2:])
-                return _capitalize(f"{first}, followed by {second}, then {remainder}.")
+            first = _title(notable[0].label)
+            second = _title(notable[1].label)
+            name = f"{first} to {second}"
+            return name[:50]
 
-    # --- Case 2: single dominant sound with acoustic detail --------------
-    detail = _acoustic_detail(features, primary_category)
-    hedge = _confidence_hedge(primary_score)
+    # Case 2: primary + optional acoustic qualifier
+    base = _title(primary_label)
+    qualifier = _fx_qualifier(features, primary_score)
 
-    secondary = _pick_secondary_label(top_labels, primary_label)
-
-    if secondary:
-        return _capitalize(f"{hedge}{primary_label} with {secondary}{detail}.")
+    if qualifier:
+        name = f"{base} {qualifier}"
     else:
-        return _capitalize(f"{hedge}{primary_label}{detail}.")
+        name = base
+
+    return name[:50]
+
+
+def _fx_qualifier(features: AcousticFeatures, score: float) -> str:
+    """Return a short acoustic qualifier word for the FXName."""
+    if features.is_percussive and features.onset_strength_max > 8.0:
+        return "Hard"
+    if features.is_percussive:
+        return "Soft"
+    if features.duration < 1.0:
+        return "Short"
+    if features.duration > 30.0:
+        return "Long"
+    if features.silence_ratio > 0.5:
+        return "Intermittent"
+    if features.sub_bass_energy > 0.4:
+        return "Deep"
+    return ""
 
 
 # ---------------------------------------------------------------------------
-# Detailed description builder
+# Description builder (UCS: long-form, 2–4 sentences)
 # ---------------------------------------------------------------------------
 
-def _build_detailed_description(
+def _build_description(
     primary_label: str,
-    primary_category: str,
+    category: str,
     top_labels: List[Tuple[str, float]],
     features: AcousticFeatures,
     events: List[SoundEvent],
     confidence: float,
 ) -> str:
     """
-    Build a 2–4 sentence description covering:
+    Build a 2–4 sentence UCS Description covering:
     - What is heard (primary content)
     - Temporal structure (if events detected)
     - Acoustic character (derived from features)
@@ -215,9 +265,7 @@ def _build_detailed_description(
     ]
     if secondary_sounds:
         if len(secondary_sounds) == 1:
-            parts.append(
-                _capitalize(f"Secondary sounds include {secondary_sounds[0]}.")
-            )
+            parts.append(_capitalize(f"Secondary sounds include {secondary_sounds[0]}."))
         else:
             joined = ", ".join(secondary_sounds[:-1]) + f", and {secondary_sounds[-1]}"
             parts.append(_capitalize(f"Additional sounds include {joined}."))
@@ -250,125 +298,89 @@ def _build_detailed_description(
 
 
 # ---------------------------------------------------------------------------
-# Tag builder
+# Keywords builder (UCS Keywords field)
 # ---------------------------------------------------------------------------
 
-def _build_tags(
+def _build_keywords(
     top_labels: List[Tuple[str, float]],
     features: AcousticFeatures,
-    primary_category: str,
-    max_tags: int,
+    category: str,
+    subcategory: str,
+    max_keywords: int,
 ) -> List[str]:
     """
-    Assemble a deduplicated tag list from CLAP labels + acoustic feature tags.
-    CLAP-derived tags come first (ranked by score), then acoustic feature tags.
+    Assemble a deduplicated keyword list from:
+    1. UCS Category and SubCategory (always first)
+    2. CLAP-derived labels (ranked by score)
+    3. Acoustic feature keywords
     """
-    tags: List[str] = []
+    keywords: List[str] = []
 
-    # CLAP-derived tags
+    # UCS category terms first
+    if category and category not in keywords:
+        keywords.append(category.lower())
+    if subcategory and subcategory.lower() not in keywords:
+        keywords.append(subcategory.lower())
+
+    # CLAP-derived keywords
     for label, score in top_labels:
-        if score >= LOW_CONFIDENCE and label not in tags:
-            tags.append(label)
+        if score >= LOW_CONFIDENCE and label not in keywords:
+            keywords.append(label)
 
-    # Primary category as a tag
-    if primary_category and primary_category not in tags:
-        tags.insert(0, primary_category)
+    # Acoustic feature keywords
+    for kw in _acoustic_feature_keywords(features):
+        if kw not in keywords:
+            keywords.append(kw)
 
-    # Acoustic feature tags
-    feature_tags = _acoustic_feature_tags(features)
-    for tag in feature_tags:
-        if tag not in tags:
-            tags.append(tag)
-
-    return tags[:max_tags]
+    return keywords[:max_keywords]
 
 
-def _acoustic_feature_tags(features: AcousticFeatures) -> List[str]:
-    """Derive simple descriptor tags from acoustic features."""
-    tags = []
+def _acoustic_feature_keywords(features: AcousticFeatures) -> List[str]:
+    """Derive descriptor keywords from acoustic features."""
+    kws = []
 
-    # Transient character
     if features.is_percussive:
-        tags.append("percussive")
+        kws.append("percussive")
     if features.onset_strength_max > 10.0:
-        tags.append("sharp transient")
+        kws.append("sharp transient")
     elif features.onset_strength_max > 5.0:
-        tags.append("transient")
-
-    # Spectral character
+        kws.append("transient")
     if features.is_tonal:
-        tags.append("tonal")
+        kws.append("tonal")
     if features.is_noisy:
-        tags.append("broadband noise")
+        kws.append("broadband noise")
     if features.spectral_flatness_mean < 0.01:
-        tags.append("pure tone")
-
-    # Frequency character
+        kws.append("pure tone")
     if features.is_low_frequency_heavy:
-        tags.append("low frequency")
+        kws.append("low frequency")
     if features.sub_bass_energy > 0.3:
-        tags.append("deep bass")
+        kws.append("deep bass")
     if features.air_energy > 0.1:
-        tags.append("high frequency content")
-
-    # Dynamics
+        kws.append("high frequency content")
     if features.dynamic_range_db > 30:
-        tags.append("high dynamic range")
-    elif features.dynamic_range_db < 5:
-        tags.append("consistent level")
-
-    # Duration
+        kws.append("high dynamic range")
     if features.duration < 1.0:
-        tags.append("short clip")
+        kws.append("short")
     elif features.duration > 30.0:
-        tags.append("long clip")
-
-    # Silence
+        kws.append("long")
     if features.silence_ratio > 0.5:
-        tags.append("intermittent")
+        kws.append("intermittent")
     elif features.silence_ratio < 0.05:
-        tags.append("continuous")
-
-    # Rhythm
+        kws.append("continuous")
     if 60 < features.tempo_bpm < 300 and features.is_percussive:
-        tags.append("rhythmic")
-
-    # Reverb proxy (high silence ratio + decaying onsets → likely reverberant space)
+        kws.append("rhythmic")
     if features.rms_std / (features.rms_mean + 1e-9) > 1.5 and features.num_onsets < 5:
-        tags.append("reverb")
+        kws.append("reverberant")
 
-    return tags
+    return kws
 
 
 # ---------------------------------------------------------------------------
 # Acoustic character helpers
 # ---------------------------------------------------------------------------
 
-def _acoustic_detail(features: AcousticFeatures, category: str) -> str:
-    """Return a brief acoustic qualifier phrase based on features."""
-    parts = []
-
-    if features.is_percussive and features.onset_strength_max > 8.0:
-        parts.append(" with a sharp attack")
-    elif features.is_percussive:
-        parts.append(" with noticeable transients")
-
-    if features.spectral_flatness_mean < 0.02 and features.is_tonal:
-        parts.append(" and a tonal character")
-    elif features.is_noisy:
-        parts.append(" and broadband noise content")
-
-    if features.sub_bass_energy > 0.4:
-        parts.append(" and strong low-frequency energy")
-
-    if features.silence_ratio > 0.6:
-        parts.append(", occurring intermittently against silence")
-
-    return "".join(parts) if parts else ""
-
-
 def _describe_acoustic_character(features: AcousticFeatures) -> str:
-    """Build an acoustic-character sentence for the detailed description."""
+    """Build an acoustic-character sentence for the description."""
     observations = []
 
     if features.is_percussive and features.onset_strength_max > 8.0:
@@ -392,7 +404,6 @@ def _describe_acoustic_character(features: AcousticFeatures) -> str:
     if not observations:
         return ""
 
-    # Combine into one sentence
     if len(observations) == 1:
         return observations[0] + "."
     main = observations[0]
@@ -418,26 +429,22 @@ def _compute_confidence(
     - Label agreement (20%): gap between top and second-best label
     - Acoustic feature quality (20%): penalize very short/silent clips
     """
-    # Component 1: CLAP primary score
     clap_conf = primary_score
 
-    # Component 2: label separation (higher gap = more confident)
     if len(top_labels) >= 2:
         gap = top_labels[0][1] - top_labels[1][1]
-        separation_conf = min(1.0, gap * 3.0)  # normalize: 0.33 gap → 1.0
+        separation_conf = min(1.0, gap * 3.0)
     else:
         separation_conf = 1.0
 
-    # Component 3: acoustic quality
     quality_conf = 1.0
     if features.duration < 0.5:
-        quality_conf *= 0.5   # very short clips are unreliable
+        quality_conf *= 0.5
     if features.silence_ratio > 0.8:
-        quality_conf *= 0.6   # mostly silent
+        quality_conf *= 0.6
     if features.rms_max < 1e-4:
-        quality_conf *= 0.3   # effectively inaudible
+        quality_conf *= 0.3
 
-    # Weighted combination
     confidence = (
         0.60 * clap_conf
         + 0.20 * separation_conf
@@ -450,17 +457,6 @@ def _compute_confidence(
 # Utility helpers
 # ---------------------------------------------------------------------------
 
-def _pick_secondary_label(
-    top_labels: List[Tuple[str, float]],
-    primary_label: str,
-) -> Optional[str]:
-    """Return the top secondary label if it is above LOW_CONFIDENCE."""
-    for label, score in top_labels[1:]:
-        if label != primary_label and score >= LOW_CONFIDENCE:
-            return label
-    return None
-
-
 def _confidence_hedge(score: float) -> str:
     """Return a hedging prefix phrase for low-confidence detections."""
     if score >= HIGH_CONFIDENCE:
@@ -471,8 +467,13 @@ def _confidence_hedge(score: float) -> str:
         return "possibly "
 
 
+def _title(s: str) -> str:
+    """Title-case a label string."""
+    return s.title()
+
+
 def _capitalize(s: str) -> str:
-    """Capitalize the first letter of a string."""
+    """Capitalize only the first letter of a string."""
     if not s:
         return s
     return s[0].upper() + s[1:]

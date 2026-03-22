@@ -84,6 +84,28 @@ output:
   full_json: false
 
 # ---------------------------------------------------------------------------
+# UCS (Universal Category System) identity fields
+# ---------------------------------------------------------------------------
+# These values are embedded into every analysis record and used to construct
+# the suggested UCS-compliant filename for each analyzed file.
+#
+# Reference: universalcategorysystem.com
+# ---------------------------------------------------------------------------
+ucs:
+  # Who recorded or designed the sounds (initials or short vendor code)
+  # Example: "TN" (Tim Nielsen), "SB", "ACME"
+  creator_id: "UNKNOWN"
+
+  # Source library or project identifier
+  # Example: "MyLibrary", "ProjectX", "NONE"
+  source_id: "NONE"
+
+  # Free-form user data appended to the suggested filename
+  # Common uses: microphone type, perspective, unique ID
+  # Example: "stereo", "mono", "closeup", "" (empty = omitted)
+  user_data: ""
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 logging:

@@ -239,28 +239,28 @@ def main(
 
 
 def _print_batch_summary(records) -> None:
-    """Print a summary table of all analyzed files."""
+    """Print a UCS summary table of all analyzed files."""
     console.print()
     table = Table(
         title=f"Batch Results ({len(records)} files)",
         show_header=True,
         header_style="bold cyan",
     )
-    table.add_column("File", style="white", no_wrap=True, max_width=35)
-    table.add_column("Duration", justify="right")
+    table.add_column("File", style="white", no_wrap=True, max_width=30)
+    table.add_column("CatID", style="yellow", no_wrap=True)
     table.add_column("Category", style="cyan")
-    table.add_column("Primary Label", style="green")
+    table.add_column("SubCategory", style="green")
     table.add_column("Conf", justify="right")
-    table.add_column("Short Description", max_width=50)
+    table.add_column("FXName", max_width=40)
 
-    for r in sorted(records, key=lambda x: x.primary_category):
+    for r in sorted(records, key=lambda x: (x.category, x.subcategory)):
         table.add_row(
             r.file_name,
-            f"{r.metadata.duration_seconds:.1f}s",
-            r.primary_category,
-            r.primary_label,
+            r.cat_id,
+            r.category,
+            r.subcategory,
             f"{r.confidence:.2f}",
-            r.short_description[:60] + ("…" if len(r.short_description) > 60 else ""),
+            r.fx_name[:40] + ("…" if len(r.fx_name) > 40 else ""),
         )
 
     console.print(table)

@@ -3,6 +3,24 @@ config_loader.py
 ----------------
 Loads and merges config.yaml + vocabulary.yaml into a single runtime
 config dict consumed by AudioAnalysisPipeline.
+
+UCS vocabulary structure
+------------------------
+The vocabulary.yaml now uses a nested UCS hierarchy:
+
+    categories:
+      <CATEGORY>:
+        <SUBCATEGORY>:
+          cat_id: <CatID>
+          labels:
+            - "clap label 1"
+            - "clap label 2"
+
+This is flattened into four parallel lookup dicts:
+    label_to_category     : label → UCS Category  (e.g. "IMPACTS")
+    label_to_subcategory  : label → UCS SubCategory (e.g. "METAL")
+    label_to_cat_id       : label → UCS CatID       (e.g. "IMPMtl")
+    label_to_category_full: label → "CATEGORY-SUBCATEGORY" (e.g. "IMPACTS-METAL")
 """
 
 from __future__ import annotations
@@ -29,21 +47,33 @@ def load_config(
 
     The returned dict has the following structure:
         {
+            # Model
             "model_id": ...,
             "device": ...,
             "fp16": ...,
+            # Audio
             "target_sr": ...,
+            # Analysis
+            "use_windowed_analysis": ...,
+            "windowed_min_duration": ...,
             "window_seconds": ...,
             "hop_seconds": ...,
             "min_confidence": ...,
-            "use_windowed_analysis": ...,
-            "windowed_min_duration": ...,
             "n_fft": ...,
             "hop_length": ...,
             "silence_threshold_db": ...,
-            "candidate_labels": [...],    # flat list of all vocabulary labels
-            "label_to_category": {...},   # label → category mapping
-            "output": {...},              # output settings
+            # Vocabulary (flat lookups)
+            "candidate_labels": [...],
+            "label_to_category": {...},
+            "label_to_subcategory": {...},
+            "label_to_cat_id": {...},
+            "label_to_category_full": {...},
+            # UCS identity
+            "ucs_creator_id": ...,
+            "ucs_source_id": ...,
+            "ucs_user_data": ...,
+            # Output
+            "output": {...},
         }
     """
     config_path = Path(config_path or DEFAULT_CONFIG_PATH)
@@ -52,22 +82,37 @@ def load_config(
     cfg = _load_yaml(config_path)
     vocab = _load_yaml(vocab_path)
 
-    # --- Flatten vocabulary into candidate_labels + label_to_category ---
+    # --- Flatten UCS vocabulary into lookup dicts -------------------------
     candidate_labels: List[str] = []
     label_to_category: Dict[str, str] = {}
+    label_to_subcategory: Dict[str, str] = {}
+    label_to_cat_id: Dict[str, str] = {}
+    label_to_category_full: Dict[str, str] = {}
 
-    for category, labels in vocab.get("categories", {}).items():
-        for label in labels:
-            if label not in label_to_category:  # first category wins on collision
-                candidate_labels.append(label)
-                label_to_category[label] = category
+    for category, subcategories in vocab.get("categories", {}).items():
+        if not isinstance(subcategories, dict):
+            continue
+        for subcategory, subcat_data in subcategories.items():
+            if not isinstance(subcat_data, dict):
+                continue
+            cat_id = subcat_data.get("cat_id", "")
+            category_full = f"{category}-{subcategory}"
+            labels = subcat_data.get("labels", [])
+            for label in labels:
+                if label not in label_to_category:  # first mapping wins on collision
+                    candidate_labels.append(label)
+                    label_to_category[label] = category
+                    label_to_subcategory[label] = subcategory
+                    label_to_cat_id[label] = cat_id
+                    label_to_category_full[label] = category_full
 
-    # --- Flatten nested config into a single dict -----------------------
+    # --- Flatten nested config into a single dict -------------------------
     model_cfg = cfg.get("model", {})
     audio_cfg = cfg.get("audio", {})
     analysis_cfg = cfg.get("analysis", {})
     output_cfg = cfg.get("output", {})
     log_cfg = cfg.get("logging", {})
+    ucs_cfg = cfg.get("ucs", {})
 
     runtime = {
         # Model
@@ -85,9 +130,16 @@ def load_config(
         "n_fft": analysis_cfg.get("n_fft", 2048),
         "hop_length": analysis_cfg.get("hop_length", 512),
         "silence_threshold_db": analysis_cfg.get("silence_threshold_db", -50.0),
-        # Vocabulary
+        # Vocabulary (flat UCS lookups)
         "candidate_labels": candidate_labels,
         "label_to_category": label_to_category,
+        "label_to_subcategory": label_to_subcategory,
+        "label_to_cat_id": label_to_cat_id,
+        "label_to_category_full": label_to_category_full,
+        # UCS identity
+        "ucs_creator_id": ucs_cfg.get("creator_id", "UNKNOWN"),
+        "ucs_source_id": ucs_cfg.get("source_id", "NONE"),
+        "ucs_user_data": ucs_cfg.get("user_data", ""),
         # Output
         "output": output_cfg,
         # Logging
@@ -99,7 +151,7 @@ def load_config(
     }
 
     logger.debug(
-        "Config loaded: %d candidate labels across %d categories.",
+        "Config loaded: %d candidate labels across %d UCS categories.",
         len(candidate_labels),
         len(set(label_to_category.values())),
     )

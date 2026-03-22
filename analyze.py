@@ -105,7 +105,7 @@ def main(
     if not quiet:
         console.print(
             Panel.fit(
-                f"[bold cyan]Audio Analyzer — Phase 1[/bold cyan]\n"
+                f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
                 f"File: [green]{audio_file}[/green]\n"
                 f"Model: [yellow]{cfg['model_id']}[/yellow]",
                 title="🎧 Analysis",
@@ -142,20 +142,37 @@ def main(
 
 
 def _print_record(record) -> None:
-    """Pretty-print an analysis record to the terminal."""
+    """Pretty-print a UCS analysis record to the terminal."""
     console.print()
+
+    # Main panel: FXName + description
     console.print(
         Panel(
-            f"[bold]{record.short_description}[/bold]\n\n"
-            f"{record.detailed_description}",
+            f"[bold]{record.fx_name}[/bold]\n\n"
+            f"{record.description}",
             title=f"[cyan]{record.file_name}[/cyan]",
-            subtitle=f"confidence: {record.confidence:.2f}  |  category: {record.primary_category}",
+            subtitle=(
+                f"confidence: {record.confidence:.2f}  |  "
+                f"{record.cat_id}  |  {record.category_full}"
+            ),
         )
     )
 
-    # Tags
-    tag_str = "  ".join(f"[green]{t}[/green]" for t in record.tags[:8])
-    console.print(f"\n[bold]Tags:[/bold] {tag_str}")
+    # UCS identity row
+    console.print(
+        f"\n[bold]UCS:[/bold] "
+        f"[yellow]{record.cat_id}[/yellow]  "
+        f"[dim]{record.category} → {record.subcategory}[/dim]"
+    )
+
+    # Suggested filename
+    console.print(
+        f"[bold]Suggested filename:[/bold] [green]{record.suggested_filename}[/green]"
+    )
+
+    # Keywords
+    kw_str = "  ".join(f"[cyan]{k}[/cyan]" for k in record.keywords[:8])
+    console.print(f"[bold]Keywords:[/bold] {kw_str}")
 
     # Sound events
     if record.sound_events:
@@ -166,21 +183,23 @@ def _print_record(record) -> None:
     table = Table(title="CLAP Classification", show_header=True, header_style="bold")
     table.add_column("Label", style="cyan")
     table.add_column("Score", justify="right")
+    table.add_column("UCS Category", style="dim")
     table.add_column("Bar", justify="left")
 
     for label, score in sorted(
         record.top_labels.items(), key=lambda x: x[1], reverse=True
     )[:8]:
         bar = "█" * int(score * 20)
-        table.add_row(label, f"{score:.3f}", f"[green]{bar}[/green]")
+        table.add_row(label, f"{score:.3f}", record.category, f"[green]{bar}[/green]")
 
     console.print(table)
 
-    # Metadata
+    # File metadata
     console.print(
         f"\n[dim]Duration: {record.metadata.duration_seconds:.2f}s  |  "
         f"Sample rate: {record.metadata.sample_rate_hz} Hz  |  "
-        f"Format: {record.metadata.format.upper()}[/dim]"
+        f"Format: {record.metadata.format.upper()}  |  "
+        f"Creator: {record.creator_id}  |  Source: {record.source_id}[/dim]"
     )
 
 
