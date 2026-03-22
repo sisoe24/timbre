@@ -1,0 +1,39 @@
+# ============================================================================
+# Audio Analyzer — Phase 1 Requirements
+# ============================================================================
+# Install with:
+#   pip install -r requirements.txt
+#
+# For RunPod GPU instances, the CUDA-enabled PyTorch is pre-installed.
+# If installing manually on a RunPod pod, use the CUDA-appropriate wheel:
+#   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+# ============================================================================
+
+# --- Core ML / Audio --------------------------------------------------------
+torch>=2.1.0
+torchaudio>=2.1.0
+transformers>=4.40.0          # CLAP via ClapModel + ClapProcessor
+accelerate>=0.27.0            # HuggingFace model loading acceleration
+
+# --- Audio processing -------------------------------------------------------
+librosa>=0.10.1               # feature extraction, loading, resampling
+soundfile>=0.12.1             # fast WAV/FLAC metadata read
+audioread>=3.0.0              # fallback audio decoder (MP3 etc.)
+# Note: MP3 support requires ffmpeg installed on the system:
+#   apt-get install ffmpeg  (Ubuntu/Debian)
+#   conda install -c conda-forge ffmpeg
+
+# --- Data / Schema ----------------------------------------------------------
+pydantic>=2.5.0               # typed output schema + validation
+numpy>=1.24.0
+pandas>=2.1.0                 # CSV handling
+
+# --- CLI / UX ---------------------------------------------------------------
+click>=8.1.0                  # CLI argument parsing
+rich>=13.7.0                  # terminal output formatting + progress bars
+
+# --- Config -----------------------------------------------------------------
+pyyaml>=6.0.1                 # YAML config loading
+
+# --- Optional: faster HuggingFace downloads ---------------------------------
+huggingface-hub>=0.21.0

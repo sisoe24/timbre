@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+"""
+batch_process.py
+----------------
+CLI for batch-analyzing an entire folder of audio files.
+
+Usage
+-----
+    python batch_process.py ./samples/
+    python batch_process.py ./samples/ --output-dir ./outputs --catalog --csv
+    python batch_process.py ./samples/ --recursive --workers 1
+
+Output
+------
+  - Per-file JSON in --output-dir/json/
+  - Optional per-file Markdown in --output-dir/markdown/
+  - Optional catalog.md (all files in one Markdown document)
+  - Optional catalog.csv
+  - batch_results.json (all records in one JSON array)
+"""
+
+import sys
+from pathlib import Path
+
+import click
+from rich.console import Console
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    BarColumn,
+    TextColumn,
+    TimeElapsedColumn,
+    MofNCompleteColumn,
+)
+from rich.panel import Panel
+from rich.table import Table
+
+console = Console()
+
+
+@click.command()
+@click.argument("input_dir", type=click.Path(exists=True, file_okay=False))
+@click.option(
+    "--output-dir",
+    "-o",
+    default=None,
+    help="Root output directory (default: ./outputs/)",
+)
+@click.option(
+    "--config",
+    "-c",
+    default=None,
+    help="Path to config.yaml",
+)
+@click.option(
+    "--vocab",
+    "-v",
+    default=None,
+    help="Path to vocabulary.yaml",
+)
+@click.option(
+    "--recursive",
+    "-r",
+    is_flag=True,
+    default=True,
+    help="Recurse into sub-directories (default: true)",
+)
+@click.option(
+    "--catalog",
+    is_flag=True,
+    default=True,
+    help="Generate a Markdown catalog from all results (default: true)",
+)
+@click.option(
+    "--csv",
+    "save_csv",
+    is_flag=True,
+    default=True,
+    help="Generate a CSV catalog (default: true)",
+)
+@click.option(
+    "--markdown",
+    "save_per_file_markdown",
+    is_flag=True,
+    default=False,
+    help="Save per-file Markdown review reports",
+)
+@click.option(
+    "--full",
+    is_flag=True,
+    default=False,
+    help="Save full JSON (with metadata + acoustics) per file",
+)
+@click.option(
+    "--no-windowed",
+    is_flag=True,
+    default=False,
+    help="Disable sliding-window event detection",
+)
+@click.option(
+    "--skip-errors",
+    is_flag=True,
+    default=True,
+    help="Skip files that fail to load/analyze (default: true)",
+)
+@click.option(
+    "--limit",
+    default=None,
+    type=int,
+    help="Limit to the first N files (for testing)",
+)
+def main(
+    input_dir: str,
+    output_dir: str,
+    config: str,
+    vocab: str,
+    recursive: bool,
+    catalog: bool,
+    save_csv: bool,
+    save_per_file_markdown: bool,
+    full: bool,
+    no_windowed: bool,
+    skip_errors: bool,
+    limit: int,
+) -> None:
+    """Batch analyze all audio files in INPUT_DIR."""
+
+    # -- Deferred imports -----------------------------------------------
+    from src.config_loader import load_config, setup_logging
+    from src.ingestion.audio_loader import discover_audio_files
+    from src.pipeline import AudioAnalysisPipeline
+    from src.output.serializer import save_json, save_json_batch
+    from src.output.serializer import save_markdown as _save_md
+    from src.output.catalog_builder import build_catalog_markdown, build_catalog_csv
+
+    # -- Configuration --------------------------------------------------
+    cfg = load_config(config_path=config, vocab_path=vocab)
+    if no_windowed:
+        cfg["use_windowed_analysis"] = False
+    setup_logging(cfg)
+
+    out_root = Path(output_dir or cfg["output"].get("output_dir", "./outputs"))
+    json_dir = out_root / "json"
+    md_dir = out_root / "markdown"
+    catalog_md = out_root / "catalog.md"
+    catalog_csv_path = out_root / "catalog.csv"
+    batch_json_path = out_root / "batch_results.json"
+
+    # -- Discover files -------------------------------------------------
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
+            f"Input: [green]{input_dir}[/green]\n"
+            f"Output: [yellow]{out_root}[/yellow]\n"
+            f"Model: [yellow]{cfg['model_id']}[/yellow]",
+            title="🎧 Batch Analysis",
+        )
+    )
+
+    audio_paths = discover_audio_files(input_dir, recursive=recursive)
+    if not audio_paths:
+        console.print(
+            f"[red]No supported audio files found in: {input_dir}[/red]"
+        )
+        sys.exit(1)
+
+    if limit:
+        audio_paths = audio_paths[:limit]
+
+    console.print(f"\nFound [bold]{len(audio_paths)}[/bold] audio files.\n")
+
+    # -- Load model ------------------------------------------------------
+    pipeline = AudioAnalysisPipeline(cfg)
+    with console.status("Loading CLAP model…"):
+        pipeline.load_model()
+    console.print("[green]✓[/green] Model loaded.\n")
+
+    # -- Analyze files with progress bar --------------------------------
+    records = []
+    failed = 0
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("Analyzing…", total=len(audio_paths))
+
+        for path in audio_paths:
+            progress.update(task, description=f"[cyan]{Path(path).name}[/cyan]")
+            try:
+                record = pipeline.analyze_file(path)
+                records.append(record)
+
+                # Save per-file JSON
+                save_json(record, json_dir, full=full)
+
+                # Optional per-file Markdown
+                if save_per_file_markdown:
+                    _save_md(record, md_dir)
+
+            except Exception as exc:
+                failed += 1
+                if not skip_errors:
+                    raise
+                console.print(
+                    f"[yellow]⚠ Skipped {Path(path).name}: {exc}[/yellow]"
+                )
+
+            progress.advance(task)
+
+    # -- Summary ---------------------------------------------------------
+    console.print(
+        f"\n[bold green]✓ Analyzed {len(records)}/{len(audio_paths)} files[/bold green]"
+        + (f" ([yellow]{failed} failed[/yellow])" if failed else "")
+    )
+
+    if not records:
+        console.print("[red]No records produced. Exiting.[/red]")
+        sys.exit(1)
+
+    # -- Save aggregate outputs -----------------------------------------
+    save_json_batch(records, batch_json_path, full=full)
+    console.print(f"[dim]Batch JSON → {batch_json_path}[/dim]")
+
+    if catalog:
+        build_catalog_markdown(records, catalog_md)
+        console.print(f"[dim]Catalog   → {catalog_md}[/dim]")
+
+    if save_csv:
+        build_catalog_csv(records, catalog_csv_path)
+        console.print(f"[dim]CSV       → {catalog_csv_path}[/dim]")
+
+    # -- Print batch summary table --------------------------------------
+    _print_batch_summary(records)
+
+
+def _print_batch_summary(records) -> None:
+    """Print a summary table of all analyzed files."""
+    console.print()
+    table = Table(
+        title=f"Batch Results ({len(records)} files)",
+        show_header=True,
+        header_style="bold cyan",
+    )
+    table.add_column("File", style="white", no_wrap=True, max_width=35)
+    table.add_column("Duration", justify="right")
+    table.add_column("Category", style="cyan")
+    table.add_column("Primary Label", style="green")
+    table.add_column("Conf", justify="right")
+    table.add_column("Short Description", max_width=50)
+
+    for r in sorted(records, key=lambda x: x.primary_category):
+        table.add_row(
+            r.file_name,
+            f"{r.metadata.duration_seconds:.1f}s",
+            r.primary_category,
+            r.primary_label,
+            f"{r.confidence:.2f}",
+            r.short_description[:60] + ("…" if len(r.short_description) > 60 else ""),
+        )
+
+    console.print(table)
+
+
+if __name__ == "__main__":
+    main()

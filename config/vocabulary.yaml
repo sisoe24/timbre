@@ -1,0 +1,279 @@
+# ============================================================================
+# Audio Analyzer — Controlled Vocabulary
+# ============================================================================
+#
+# This file defines the candidate labels fed to CLAP for zero-shot
+# classification.  Every label belongs to exactly one category.
+#
+# Guidelines
+# ----------
+# - Labels must be short, specific, and unambiguous
+# - Labels must describe what is AUDIBLE, not what might cause it
+# - Avoid labels that imply emotion, scene, or genre
+# - Prefer noun phrases over adjectives alone
+# - Add new labels in the appropriate category section
+#
+# To add a new label: add it under the correct category, then
+# re-run the pipeline (no retraining required — CLAP is zero-shot).
+# ============================================================================
+
+categories:
+
+  # --------------------------------------------------------------------------
+  # IMPACTS — short, transient, high-energy events
+  # --------------------------------------------------------------------------
+  impact:
+    - metallic impact
+    - metal hit
+    - metal clang
+    - metal scrape
+    - glass shatter
+    - glass break
+    - glass clink
+    - wooden impact
+    - wooden knock
+    - wooden crack
+    - hard surface impact
+    - concrete impact
+    - stone impact
+    - plastic impact
+    - body impact
+    - punch
+    - slap
+    - drum hit
+    - cymbal crash
+    - bass drum hit
+    - snare drum hit
+    - explosion
+    - gunshot
+    - firearm shot
+    - bullet impact
+    - hammer strike
+    - nail strike
+
+  # --------------------------------------------------------------------------
+  # MOVEMENT — sounds produced by physical movement or locomotion
+  # --------------------------------------------------------------------------
+  movement:
+    - footsteps on hard surface
+    - footsteps on gravel
+    - footsteps on wood
+    - footsteps on grass
+    - footsteps on sand
+    - running footsteps
+    - walking footsteps
+    - shuffling footsteps
+    - door opening
+    - door closing
+    - door slam
+    - door creak
+    - window opening
+    - drawer opening
+    - drawer closing
+    - zipper
+    - keys jingling
+    - paper rustling
+    - fabric rustling
+    - cloth movement
+    - chair scraping
+    - chair creak
+    - sliding sound
+    - dragging sound
+    - rolling object
+
+  # --------------------------------------------------------------------------
+  # AMBIENCE — continuous or slowly changing environmental backgrounds
+  # --------------------------------------------------------------------------
+  ambience:
+    - indoor ambience
+    - outdoor ambience
+    - room tone
+    - office ambience
+    - crowd murmur
+    - restaurant ambience
+    - street ambience
+    - urban background noise
+    - park ambience
+    - forest ambience
+    - river ambience
+    - ocean waves
+    - beach ambience
+    - wind ambience
+    - gentle breeze
+    - cave reverb
+    - empty room
+    - underground ambience
+
+  # --------------------------------------------------------------------------
+  # WEATHER — atmospheric and environmental sounds
+  # --------------------------------------------------------------------------
+  weather:
+    - rain
+    - heavy rain
+    - light rain
+    - rain on roof
+    - rain on window
+    - thunder
+    - distant thunder
+    - storm
+    - wind
+    - strong wind
+    - wind howl
+    - hail
+    - snow ambience
+    - ice cracking
+
+  # --------------------------------------------------------------------------
+  # MACHINERY — mechanical and industrial sounds
+  # --------------------------------------------------------------------------
+  machinery:
+    - engine running
+    - engine idle
+    - engine rev
+    - diesel engine
+    - electric motor
+    - mechanical hum
+    - motor buzz
+    - fan noise
+    - air conditioner
+    - ventilation
+    - pump sound
+    - compressor
+    - hydraulic
+    - pneumatic
+    - drill
+    - saw cutting
+    - grinding metal
+    - conveyor belt
+    - gear mechanism
+    - clicking mechanism
+    - electrical buzzing
+    - electrical hum
+    - power line buzz
+
+  # --------------------------------------------------------------------------
+  # VEHICLES — transportation-related sounds
+  # --------------------------------------------------------------------------
+  vehicles:
+    - car passing
+    - car acceleration
+    - car braking
+    - car horn
+    - truck passing
+    - motorcycle
+    - bicycle
+    - train passing
+    - train horn
+    - aircraft flyover
+    - helicopter
+    - boat engine
+    - car door closing
+    - tire screech
+    - traffic
+
+  # --------------------------------------------------------------------------
+  # VOICES — human vocal and speech sounds
+  # --------------------------------------------------------------------------
+  voices:
+    - speech
+    - conversation
+    - single voice speaking
+    - multiple voices speaking
+    - whispering
+    - shouting
+    - crowd talking
+    - laughter
+    - singing
+    - humming
+    - coughing
+    - breathing
+    - crowd cheer
+
+  # --------------------------------------------------------------------------
+  # WATER — liquid and fluid sounds
+  # --------------------------------------------------------------------------
+  water:
+    - water dripping
+    - water flowing
+    - water splash
+    - running water
+    - waterfall
+    - bubbling water
+    - pouring liquid
+    - water impact
+
+  # --------------------------------------------------------------------------
+  # ANIMALS — natural creature sounds
+  # --------------------------------------------------------------------------
+  animals:
+    - bird chirping
+    - bird song
+    - birds in background
+    - dog bark
+    - cat meow
+    - insect ambience
+    - crickets
+    - frog sound
+    - animal movement
+
+  # --------------------------------------------------------------------------
+  # TEXTURES — sustained, textural, or continuous tonal sounds
+  # --------------------------------------------------------------------------
+  textures:
+    - low rumble
+    - deep bass rumble
+    - sub-bass tone
+    - high-pitched tone
+    - pure sine tone
+    - noise burst
+    - white noise
+    - brown noise
+    - hiss
+    - static noise
+    - crackle
+    - pops and clicks
+    - vinyl crackle
+    - digital glitch
+    - interference noise
+
+  # --------------------------------------------------------------------------
+  # MUSIC — musical and tonal instrumental sounds
+  # --------------------------------------------------------------------------
+  music:
+    - piano notes
+    - guitar strum
+    - bass guitar
+    - violin
+    - brass instrument
+    - woodwind instrument
+    - synthesizer
+    - electronic beat
+    - musical chord
+    - musical melody
+    - percussion pattern
+    - rhythmic beat
+
+  # --------------------------------------------------------------------------
+  # ALERTS & SIGNALS — intentional signal sounds
+  # --------------------------------------------------------------------------
+  alerts:
+    - alarm beep
+    - notification sound
+    - phone ringing
+    - door bell
+    - buzzer
+    - siren
+    - emergency alarm
+    - electronic beep
+    - click sound
+    - button press
+
+  # --------------------------------------------------------------------------
+  # BACKGROUND — non-specific or residual background content
+  # --------------------------------------------------------------------------
+  background:
+    - background noise
+    - low-level noise
+    - silence
+    - near-silence
+    - room noise

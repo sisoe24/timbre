@@ -1,0 +1,90 @@
+# ============================================================================
+# Audio Analyzer — Phase 1 Configuration
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Model settings
+# ---------------------------------------------------------------------------
+model:
+  # HuggingFace model ID for CLAP
+  # Options: "laion/larger_clap_general" (recommended, 630K pairs)
+  #          "laion/clap-htsat-unfused"  (smaller, faster fallback)
+  model_id: "laion/larger_clap_general"
+
+  # Device: "cuda", "cpu", or null (auto-detect)
+  device: null
+
+  # Use float16 on GPU to reduce memory usage
+  fp16: true
+
+# ---------------------------------------------------------------------------
+# Audio ingestion settings
+# ---------------------------------------------------------------------------
+audio:
+  # Sample rate CLAP expects (48000 Hz) — do not change unless using a
+  # different model that expects a different rate
+  target_sr: 48000
+
+  # Supported file extensions (librosa handles conversion)
+  supported_formats:
+    - .wav
+    - .mp3
+    - .flac
+    - .ogg
+    - .aiff
+    - .m4a
+
+# ---------------------------------------------------------------------------
+# Analysis settings
+# ---------------------------------------------------------------------------
+analysis:
+  # Sliding window for temporal event detection
+  use_windowed_analysis: true
+
+  # Clips shorter than this (seconds) use full-clip analysis only
+  windowed_min_duration: 2.0
+
+  # CLAP sliding window size (seconds)
+  window_seconds: 2.0
+
+  # Sliding window hop (seconds) — smaller = finer temporal resolution
+  hop_seconds: 0.5
+
+  # Minimum CLAP confidence to record a detection (below = "background")
+  min_confidence: 0.25
+
+  # Acoustic feature extraction
+  n_fft: 2048
+  hop_length: 512
+  silence_threshold_db: -50.0
+
+# ---------------------------------------------------------------------------
+# Output settings
+# ---------------------------------------------------------------------------
+output:
+  # Root directory for all outputs
+  output_dir: "./outputs"
+
+  # Sub-directory structure
+  json_dir: "./outputs/json"
+  csv_dir: "./outputs/csv"
+  markdown_dir: "./outputs/markdown"
+
+  # Catalog file names
+  catalog_markdown: "./outputs/catalog.md"
+  catalog_csv: "./outputs/catalog.csv"
+  batch_json: "./outputs/batch_results.json"
+
+  # If true, save per-file Markdown report in addition to JSON
+  save_per_file_markdown: true
+
+  # If true, include full metadata in JSON (vs. spec-only brief format)
+  full_json: false
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+logging:
+  level: "INFO"    # DEBUG, INFO, WARNING, ERROR
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  log_file: null   # set to a path to also write logs to a file
