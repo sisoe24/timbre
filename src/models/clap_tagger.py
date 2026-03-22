@@ -50,8 +50,9 @@ class CLAPTagger:
     Parameters
     ----------
     model_id  : HuggingFace model identifier
-    device    : "cuda", "cpu", or None (auto-detect)
-    fp16      : use float16 on GPU for lower memory usage (default True on CUDA)
+    device    : "cuda", "mps", "cpu", or None (auto-detect)
+    fp16      : use float16 for lower memory usage (only applied on CUDA;
+                disabled automatically on MPS and CPU)
     """
 
     def __init__(
@@ -61,7 +62,9 @@ class CLAPTagger:
         fp16: bool = True,
     ) -> None:
         self.model_id = model_id
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device or _resolve_device()
+        # fp16 only on CUDA — MPS has incomplete float16 kernel support
+        # and CPU has no benefit from fp16
         self.fp16 = fp16 and (self.device == "cuda")
 
         self._model = None
@@ -211,7 +214,7 @@ class CLAPTagger:
         """
         self._ensure_loaded()
         inputs = self._processor(
-            audios=waveform,
+            audio=waveform,
             return_tensors="pt",
             sampling_rate=sr,
         ).to(self.device)
@@ -239,7 +242,7 @@ class CLAPTagger:
     ) -> Dict[str, float]:
         """Run CLAP inference on a single chunk ≤ CLAP_MAX_SECONDS."""
         inputs = self._processor(
-            audios=waveform,
+            audio=waveform,
             text=candidate_labels,
             return_tensors="pt",
             padding=True,
@@ -264,6 +267,25 @@ class CLAPTagger:
 # ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
+
+def _resolve_device() -> str:
+    """
+    Auto-detect the best available compute device.
+
+    Priority: CUDA (NVIDIA GPU) → MPS (Apple Silicon) → CPU
+
+    Notes
+    -----
+    - CUDA: full fp16 support, fastest
+    - MPS:  Apple Metal (M1/M2/M3/M4), fp32 only for CLAP compatibility
+    - CPU:  fallback, slowest (~5–10x vs GPU)
+    """
+    if torch.cuda.is_available():
+        return "cuda"
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        return "mps"
+    return "cpu"
+
 
 def _split_waveform(
     waveform: np.ndarray,

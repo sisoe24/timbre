@@ -11,10 +11,12 @@ model:
   #          "laion/clap-htsat-unfused"  (smaller, faster fallback)
   model_id: "laion/larger_clap_general"
 
-  # Device: "cuda", "cpu", or null (auto-detect)
+  # Device: "cuda", "mps", "cpu", or null (auto-detect)
+  # null = auto-detect: prefers cuda → mps (Apple Silicon) → cpu
   device: null
 
-  # Use float16 on GPU to reduce memory usage
+  # Use float16 to reduce memory usage.
+  # Only applied on CUDA — disabled automatically on MPS and CPU.
   fp16: true
 
 # ---------------------------------------------------------------------------

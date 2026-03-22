@@ -97,6 +97,7 @@ audio_analyzer/
 ├── analyze.py                  # CLI: single file analysis
 ├── batch_process.py            # CLI: batch folder analysis
 ├── requirements.txt
+├── setup_mac.sh                # macOS Silicon setup (M1/M2/M3/M4)
 ├── setup_runpod.sh             # RunPod GPU environment setup
 │
 ├── config/
@@ -129,6 +130,64 @@ audio_analyzer/
     ├── catalog.md              # Full catalog grouped by category
     ├── catalog.csv             # Flat CSV catalog
     └── batch_results.json      # All records in one JSON array
+```
+
+---
+
+## Running Locally — macOS Silicon (M1/M2/M3/M4)
+
+### Requirements
+
+- macOS 12.3 (Monterey) or later — required for MPS support
+- Apple Silicon Mac (M1 or newer)
+- [Homebrew](https://brew.sh)
+- Python 3.10+
+
+### Device behaviour
+
+On Apple Silicon, PyTorch uses **MPS (Metal Performance Shaders)** — the GPU
+backend for Apple's unified memory architecture. The system detects it
+automatically in order of priority:
+
+```
+CUDA (NVIDIA) → MPS (Apple Silicon) → CPU
+```
+
+fp16 is automatically disabled on MPS — CLAP runs in fp32, which is correct
+and stable. Expect ~3–8x slower than a dedicated NVIDIA GPU but much faster
+than CPU-only.
+
+### Setup
+
+```bash
+cd audio_analyzer
+bash setup_mac.sh
+```
+
+This creates a `.venv` in the project root, installs ffmpeg via Homebrew,
+PyTorch with MPS support, all Python dependencies, and pre-downloads the
+CLAP model (~1.2 GB).
+
+### Run
+
+Activate the virtual environment, then run:
+
+```bash
+source .venv/bin/activate
+python analyze.py samples/0_sample.wav
+python batch_process.py ./samples/
+```
+
+Or skip activation and use the venv Python directly:
+
+```bash
+.venv/bin/python analyze.py samples/0_sample.wav
+```
+
+To confirm MPS is active, look for this line in the output:
+
+```
+[INFO] src.models.clap_tagger: Loading CLAP model: laion/larger_clap_general on mps
 ```
 
 ---
@@ -187,15 +246,22 @@ bash setup_runpod.sh
 
 The setup script will:
 1. Auto-detect your CUDA version and select the right PyTorch wheel
-2. Upgrade torch + torchaudio + torchvision together to >= 2.6.0
-3. Install ffmpeg and libsndfile1
-4. Install all Python dependencies from `requirements.txt`
-5. Pre-download and cache the CLAP model (~1.2 GB)
-6. Verify everything works
+2. Create a `.venv` virtual environment in the project root
+3. Install torch + torchaudio + torchvision together into the venv
+4. Install ffmpeg and libsndfile1
+5. Install all Python dependencies from `requirements.txt`
+6. Pre-download and cache the CLAP model (~1.2 GB)
+7. Verify everything works
 
 ---
 
 ### Step 4 — Run the analyzer
+
+Activate the virtual environment first:
+
+```bash
+source .venv/bin/activate
+```
 
 **Single file:**
 ```bash
@@ -364,7 +430,7 @@ footsteps_01.wav,4.50,movement,footsteps on gravel,0.78,Footsteps on gravel...,.
 ```yaml
 model:
   model_id: "laion/larger_clap_general"
-  device: null        # auto-detect (cuda / cpu)
+  device: null        # auto-detect: cuda → mps → cpu
   fp16: true          # float16 on GPU — reduces VRAM usage
 
 analysis:
@@ -417,12 +483,19 @@ To add new labels: edit `vocabulary.yaml` and re-run. No retraining needed.
 
 ## Technical Notes
 
-- **CLAP model size:** ~1.2 GB (downloaded from HuggingFace Hub on first run)
-- **GPU memory:** ~4 GB VRAM in fp16 mode
-- **Processing speed:** ~0.5s/clip (full-clip), ~2–3s/clip (windowed on 10s file) on A100
-- **CPU fallback:** Works without GPU, ~5–10x slower
-- **torch >= 2.6.0** required (CVE-2025-32434 — torch.load safety)
-- **torchvision and torchaudio must be upgraded together with torch** to avoid internal import conflicts in transformers
+| | macOS Silicon (MPS) | RunPod (CUDA) | CPU fallback |
+|---|---|---|---|
+| **Setup** | `bash setup_mac.sh` | `bash setup_runpod.sh` | `pip install -r requirements.txt` |
+| **Device** | MPS (auto-detected) | CUDA (auto-detected) | CPU |
+| **fp16** | No (fp32 only) | Yes | No |
+| **VRAM / RAM** | ~4 GB unified memory | ~4 GB VRAM | system RAM |
+| **Speed (10s clip)** | ~5–15s | ~2–3s | ~30–60s |
+| **torch wheels** | Standard pip | CUDA-specific index | Standard pip |
+
+**Other notes:**
+- CLAP model size: ~1.2 GB (downloaded from HuggingFace Hub on first run, then cached)
+- `torch >= 2.6.0` required (CVE-2025-32434 — torch.load safety fix)
+- On RunPod: `torchvision` must be upgraded together with `torch` in a single pip command to avoid internal import conflicts in transformers
 
 ---
 

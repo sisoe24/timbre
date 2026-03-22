@@ -1,0 +1,21 @@
+# Virtual environment — never commit this
+.venv/
+
+# Outputs — generated at runtime
+outputs/
+other/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# HuggingFace model cache (too large to commit)
+.cache/
+
+# Editors
+.idea/
+.vscode/

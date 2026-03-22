@@ -4,17 +4,30 @@
 # Install with:
 #   pip install -r requirements.txt
 #
-# NOTE: torch, torchaudio, and torchvision must all be installed together
-# using the same CUDA wheel index to avoid version mismatches.
-# The setup_runpod.sh script handles this correctly.
+# --- PyTorch installation (platform-specific) ---
+#
+# macOS Silicon (M1/M2/M3/M4):
+#   Standard pip wheels include MPS support automatically.
+#   Run setup_mac.sh — it handles PyTorch install before this file.
+#
+# RunPod / Linux + CUDA:
+#   torch, torchaudio, and torchvision MUST be installed together
+#   using the matching CUDA wheel index to avoid version conflicts.
+#   Run setup_runpod.sh — it handles PyTorch install before this file.
+#
+# Manual install examples:
+#   macOS:  pip install "torch>=2.6.0" torchaudio
+#   CUDA 12.4: pip install "torch>=2.6.0" torchaudio torchvision \
+#               --index-url https://download.pytorch.org/whl/cu124
+#
+# Minimum torch 2.6.0 required (CVE-2025-32434 torch.load safety fix).
 # ============================================================================
 
 # --- Core ML ----------------------------------------------------------------
-# Installed separately in setup_runpod.sh with the CUDA wheel index.
-# Minimum torch 2.6.0 required due to CVE-2025-32434 (torch.load safety fix).
+# Installed via setup_mac.sh or setup_runpod.sh before this file is read.
 # torch>=2.6.0
 # torchaudio>=2.6.0
-# torchvision>=0.21.0
+# torchvision>=0.21.0  (RunPod only)
 
 # --- Transformers / HuggingFace ---------------------------------------------
 transformers>=4.40.0
@@ -25,7 +38,9 @@ huggingface-hub>=0.21.0
 librosa>=0.10.1
 soundfile>=0.12.1
 audioread>=3.0.0
-# ffmpeg must be installed at the system level (apt-get install ffmpeg)
+# ffmpeg must be installed at the system level:
+#   macOS:  brew install ffmpeg
+#   Linux:  apt-get install ffmpeg
 
 # --- Data / Schema ----------------------------------------------------------
 pydantic>=2.5.0
