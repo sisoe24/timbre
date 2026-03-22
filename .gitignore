@@ -3,7 +3,7 @@
 homebrew-timbre/
 
 # Outputs — generated at runtime
-outputs/
+out/
 other/
 
 # Python cache
