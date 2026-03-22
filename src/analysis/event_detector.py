@@ -77,6 +77,7 @@ def detect_events(
     hop_seconds: float = 0.5,
     min_confidence: float = MIN_CONFIDENCE_THRESHOLD,
     cache=None,  # Optional[LabelEmbeddingCache]
+    top_k_categories: int = 5,
 ) -> List[SoundEvent]:
     """
     Run sliding-window CLAP classification to detect temporal sound events.
@@ -111,6 +112,7 @@ def detect_events(
             cache=cache,
             window_seconds=window_seconds,
             hop_seconds=hop_seconds,
+            top_k_categories=top_k_categories,
         )
         # Use the cache's label_to_category for lookups
         label_to_category = cache.label_to_category
@@ -156,6 +158,7 @@ def _classify_windowed_cached(
     cache,  # LabelEmbeddingCache
     window_seconds: float,
     hop_seconds: float,
+    top_k_categories: int = 5,
 ) -> List[Tuple[float, float, Dict[str, float]]]:
     """
     Sliding-window classification using pre-computed text embeddings.
@@ -181,7 +184,7 @@ def _classify_windowed_cached(
             chunk = np.pad(chunk, (0, window_samples - len(chunk)))
 
         audio_embed = tagger.embed_audio(chunk, sr)
-        scores = cache.classify(audio_embed)
+        scores = cache.classify(audio_embed, top_k_categories=top_k_categories)
 
         t_start = start / sr
         t_end = end / sr

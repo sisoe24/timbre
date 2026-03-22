@@ -144,6 +144,7 @@ def load_config(
         "window_seconds": analysis_cfg.get("window_seconds", 2.0),
         "hop_seconds": analysis_cfg.get("hop_seconds", 0.5),
         "min_confidence": analysis_cfg.get("min_confidence", 0.25),
+        "top_k_categories": analysis_cfg.get("top_k_categories", 5),
         "n_fft": analysis_cfg.get("n_fft", 2048),
         "hop_length": analysis_cfg.get("hop_length", 512),
         "silence_threshold_db": analysis_cfg.get("silence_threshold_db", -50.0),

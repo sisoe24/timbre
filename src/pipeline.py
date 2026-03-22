@@ -74,6 +74,7 @@ class AudioAnalysisPipeline:
         self.min_confidence: float = config.get("min_confidence", 0.25)
         self.use_windowed_analysis: bool = config.get("use_windowed_analysis", True)
         self.windowed_min_duration: float = config.get("windowed_min_duration", 2.0)
+        self.top_k_categories: int = config.get("top_k_categories", 5)
 
     # ------------------------------------------------------------------
     # Model loading
@@ -166,7 +167,9 @@ class AudioAnalysisPipeline:
         if self.cache is not None:
             # Fast path: embed audio once, score against cached text matrix
             audio_embed = self.tagger.embed_audio(af.waveform, af.sample_rate)
-            full_scores: Dict[str, float] = self.cache.classify(audio_embed)
+            full_scores: Dict[str, float] = self.cache.classify(
+                audio_embed, top_k_categories=self.top_k_categories
+            )
         else:
             # Legacy path: re-encode all labels on every file (slow)
             full_scores = self.tagger.classify(
@@ -183,7 +186,8 @@ class AudioAnalysisPipeline:
 
         # --- 4. Event detection (sliding window or single-clip fallback) -
         events: List[SoundEvent] = self._detect_events(
-            af, full_scores, features, audio_embed if self.cache else None
+            af, full_scores, features, audio_embed if self.cache else None,
+            top_k_categories=self.top_k_categories,
         )
 
         # --- 5. Synthesize description -----------------------------------
@@ -275,6 +279,7 @@ class AudioAnalysisPipeline:
         full_scores: Dict[str, float],
         features: AcousticFeatures,
         audio_embed=None,  # pre-computed embedding when cache is active
+        top_k_categories: int = 5,
     ) -> List[SoundEvent]:
         """Choose windowed or single-clip event detection based on duration."""
         if (
@@ -292,6 +297,7 @@ class AudioAnalysisPipeline:
                     hop_seconds=self.hop_seconds,
                     min_confidence=self.min_confidence,
                     cache=self.cache,  # None → legacy path; set → fast path
+                    top_k_categories=top_k_categories,
                 )
                 return events
             except Exception as exc:

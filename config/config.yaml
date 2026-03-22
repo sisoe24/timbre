@@ -69,6 +69,12 @@ analysis:
   # Minimum CLAP confidence to record a detection (below = "background")
   min_confidence: 0.25
 
+  # Hierarchical classification: number of top UCS categories to explore in
+  # Stage 2 (score all labels inside the top-K categories by centroid distance).
+  # Lower = faster but higher risk of missing the correct category.
+  # Recommended range: 3–7. Set to null or omit to use all categories (flat).
+  top_k_categories: 5
+
   # Acoustic feature extraction
   n_fft: 2048
   hop_length: 512
