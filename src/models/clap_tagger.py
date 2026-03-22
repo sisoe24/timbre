@@ -209,26 +209,123 @@ class CLAPTagger:
 
     def embed_audio(self, waveform: np.ndarray, sr: int) -> np.ndarray:
         """
-        Return the CLAP audio embedding for a waveform.
-        Useful for similarity search in future phases.
+        Return the L2-normalised CLAP audio embedding for a waveform.
+
+        If the waveform is longer than CLAP_MAX_SECONDS it is split into
+        chunks and the mean embedding is returned.
+
+        Shape: (512,) float32.
         """
         self._ensure_loaded()
-        inputs = self._processor(
-            audio=waveform,
-            return_tensors="pt",
-            sampling_rate=sr,
-        ).to(self.device)
+        chunks = _split_waveform(waveform, sr, max_seconds=CLAP_MAX_SECONDS)
+        embeddings = []
+        for chunk in chunks:
+            inputs = self._processor(
+                audio=chunk,
+                return_tensors="pt",
+                sampling_rate=sr,
+            ).to(self.device)
+            if self.fp16:
+                inputs = {
+                    k: v.half() if v.dtype == torch.float32 else v
+                    for k, v in inputs.items()
+                }
+            with torch.no_grad():
+                audio_out = self._model.audio_model(**inputs)
+                feat = self._model.audio_projection(
+                    audio_out.pooler_output
+                )
+            embeddings.append(feat.cpu().float().numpy()[0])
 
-        if self.fp16:
-            inputs = {
-                k: v.half() if v.dtype == torch.float32 else v
-                for k, v in inputs.items()
-            }
+        mean_embed = np.mean(embeddings, axis=0)
+        # L2-normalise so cosine similarity == dot product
+        norm = np.linalg.norm(mean_embed)
+        if norm > 0:
+            mean_embed = mean_embed / norm
+        return mean_embed  # shape: (512,)
 
-        with torch.no_grad():
-            audio_features = self._model.get_audio_features(**inputs)
+    def embed_text(
+        self,
+        labels: List[str],
+        batch_size: int = 64,
+    ) -> np.ndarray:
+        """
+        Encode a list of text labels into L2-normalised CLAP embeddings.
 
-        return audio_features.cpu().float().numpy()[0]  # shape: (512,)
+        Parameters
+        ----------
+        labels     : list of text descriptions
+        batch_size : number of labels per forward pass (reduce if OOM)
+
+        Returns
+        -------
+        np.ndarray of shape (N, D) float32, each row L2-normalised.
+        """
+        self._ensure_loaded()
+        all_embeddings = []
+
+        for i in range(0, len(labels), batch_size):
+            batch = labels[i : i + batch_size]
+            inputs = self._processor(
+                text=batch,
+                return_tensors="pt",
+                padding=True,
+            ).to(self.device)
+            with torch.no_grad():
+                # Use text_model + text_projection directly to avoid
+                # version-dependent behaviour of get_text_features()
+                text_out = self._model.text_model(
+                    input_ids=inputs["input_ids"],
+                    attention_mask=inputs.get("attention_mask"),
+                )
+                # pooler_output is the [CLS] representation
+                feat = self._model.text_projection(text_out.pooler_output)
+            # L2-normalise each row
+            norms = feat.norm(dim=-1, keepdim=True).clamp(min=1e-8)
+            feat = feat / norms
+            all_embeddings.append(feat.cpu().float().numpy())
+
+        return np.concatenate(all_embeddings, axis=0)  # (N, D)
+
+    @property
+    def logit_scale(self) -> float:
+        """Temperature scaling factor used by CLAP (exp of learned log-scale)."""
+        self._ensure_loaded()
+        # ClapModel uses logit_scale_a (audio) and logit_scale_t (text).
+        # For audio-text similarity we use the audio scale.
+        scale_attr = "logit_scale_a" if hasattr(self._model, "logit_scale_a") else "logit_scale"
+        return float(getattr(self._model, scale_attr).exp().item())
+
+    def score_audio_vs_embeddings(
+        self,
+        audio_embedding: np.ndarray,
+        text_embeddings: np.ndarray,
+        labels: List[str],
+    ) -> Dict[str, float]:
+        """
+        Score a pre-computed audio embedding against pre-computed text embeddings.
+
+        Both embeddings must be L2-normalised (as returned by embed_audio /
+        embed_text).  Uses the model's logit scale to match the behaviour of
+        the original classify() method.
+
+        Parameters
+        ----------
+        audio_embedding : shape (D,)
+        text_embeddings : shape (N, D)
+        labels          : list of N label strings
+
+        Returns
+        -------
+        dict mapping each label to its softmax probability.
+        """
+        scale = self.logit_scale
+        logits = scale * (text_embeddings @ audio_embedding)  # (N,)
+        # Numerically stable softmax
+        logits -= logits.max()
+        exp_logits = np.exp(logits)
+        probs = exp_logits / exp_logits.sum()
+        return {label: float(p) for label, p in zip(labels, probs)}
 
     # ------------------------------------------------------------------
     # Internal helpers

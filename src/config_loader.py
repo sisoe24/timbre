@@ -114,11 +114,19 @@ def load_config(
     log_cfg = cfg.get("logging", {})
     ucs_cfg = cfg.get("ucs", {})
 
+    # Resolve label_cache_path relative to the config file's directory
+    raw_cache_path = model_cfg.get("label_cache_path")
+    if raw_cache_path:
+        label_cache_path = str(config_path.parent / raw_cache_path)
+    else:
+        label_cache_path = None
+
     runtime = {
         # Model
         "model_id": model_cfg.get("model_id", "laion/larger_clap_general"),
         "device": model_cfg.get("device", None),
         "fp16": model_cfg.get("fp16", True),
+        "label_cache_path": label_cache_path,
         # Audio
         "target_sr": audio_cfg.get("target_sr", 48000),
         # Analysis

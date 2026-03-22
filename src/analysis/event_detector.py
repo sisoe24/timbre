@@ -76,6 +76,7 @@ def detect_events(
     window_seconds: float = 2.0,
     hop_seconds: float = 0.5,
     min_confidence: float = MIN_CONFIDENCE_THRESHOLD,
+    cache=None,  # Optional[LabelEmbeddingCache]
 ) -> List[SoundEvent]:
     """
     Run sliding-window CLAP classification to detect temporal sound events.
@@ -85,11 +86,14 @@ def detect_events(
     waveform         : mono float32 waveform at 48 kHz
     sr               : sample rate (must be 48000)
     tagger           : pre-loaded CLAPTagger instance
-    candidate_labels : list of text labels to classify against
+    candidate_labels : list of text labels (used only when cache=None)
     label_to_category: mapping from label → category string
     window_seconds   : CLAP window size
     hop_seconds      : window hop size
     min_confidence   : discard detections below this confidence
+    cache            : LabelEmbeddingCache — when provided, text embeddings
+                       are loaded from cache instead of re-encoded each window
+                       (significantly faster for large vocabularies)
 
     Returns
     -------
@@ -98,18 +102,33 @@ def detect_events(
     if len(waveform) == 0:
         return []
 
-    # Run sliding-window CLAP inference
-    window_results = tagger.classify_windowed(
-        waveform=waveform,
-        sr=sr,
-        candidate_labels=candidate_labels,
-        window_seconds=window_seconds,
-        hop_seconds=hop_seconds,
-    )
+    if cache is not None:
+        # Fast path: embed audio once per window, score against cached text
+        window_results = _classify_windowed_cached(
+            waveform=waveform,
+            sr=sr,
+            tagger=tagger,
+            cache=cache,
+            window_seconds=window_seconds,
+            hop_seconds=hop_seconds,
+        )
+        # Use the cache's label_to_category for lookups
+        label_to_category = cache.label_to_category
+    else:
+        # Legacy path: re-encode all labels on every window
+        window_results = tagger.classify_windowed(
+            waveform=waveform,
+            sr=sr,
+            candidate_labels=candidate_labels,
+            window_seconds=window_seconds,
+            hop_seconds=hop_seconds,
+        )
 
     # Convert each window to a single best-match event
     raw_events: List[Tuple[float, float, str, str, float]] = []
     for (t_start, t_end, scores) in window_results:
+        if not scores:
+            continue
         top_label = max(scores, key=scores.get)
         top_score = scores[top_label]
 
@@ -128,6 +147,51 @@ def detect_events(
     filtered = [e for e in merged if e.duration >= MIN_EVENT_DURATION_S]
 
     return filtered
+
+
+def _classify_windowed_cached(
+    waveform: np.ndarray,
+    sr: int,
+    tagger: CLAPTagger,
+    cache,  # LabelEmbeddingCache
+    window_seconds: float,
+    hop_seconds: float,
+) -> List[Tuple[float, float, Dict[str, float]]]:
+    """
+    Sliding-window classification using pre-computed text embeddings.
+
+    For each window: embed audio → cosine similarity against cached text matrix.
+    Text is never re-encoded, making this much faster than the legacy path.
+    """
+    import numpy as np
+    from ..models.clap_tagger import CLAP_MAX_SECONDS
+
+    window_samples = int(window_seconds * sr)
+    hop_samples = int(hop_seconds * sr)
+    total_samples = len(waveform)
+    results: List[Tuple[float, float, Dict[str, float]]] = []
+
+    start = 0
+    while start < total_samples:
+        end = min(start + window_samples, total_samples)
+        chunk = waveform[start:end]
+
+        # Pad short final window
+        if len(chunk) < window_samples:
+            chunk = np.pad(chunk, (0, window_samples - len(chunk)))
+
+        audio_embed = tagger.embed_audio(chunk, sr)
+        scores = cache.classify(audio_embed)
+
+        t_start = start / sr
+        t_end = end / sr
+        results.append((t_start, t_end, scores))
+
+        if end >= total_samples:
+            break
+        start += hop_samples
+
+    return results
 
 
 def detect_events_from_full_clip(

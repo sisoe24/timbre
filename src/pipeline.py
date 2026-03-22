@@ -19,6 +19,7 @@ import numpy as np
 
 from .ingestion.audio_loader import AudioFile, load_audio
 from .models.clap_tagger import CLAPTagger, CLAP_SAMPLE_RATE
+from .models.label_cache import LabelEmbeddingCache
 from .analysis.feature_extractor import AcousticFeatures, extract_features
 from .analysis.event_detector import (
     SoundEvent,
@@ -52,6 +53,7 @@ class AudioAnalysisPipeline:
     def __init__(self, config: dict) -> None:
         self.config = config
         self.tagger: Optional[CLAPTagger] = None
+        self.cache: Optional[LabelEmbeddingCache] = None
 
         # Load vocabulary from config (UCS lookups)
         self.candidate_labels: List[str] = config.get("candidate_labels", [])
@@ -78,13 +80,49 @@ class AudioAnalysisPipeline:
     # ------------------------------------------------------------------
 
     def load_model(self) -> None:
-        """Load the CLAP model (downloads from HF Hub if not cached)."""
+        """
+        Load the CLAP model and the label embedding cache.
+
+        If the cache file does not exist (or is stale) it is built
+        automatically on first run — this adds a one-time overhead of
+        ~30-60 s but makes every subsequent run significantly faster.
+        """
         model_id = self.config.get("model_id", "laion/larger_clap_general")
         device = self.config.get("device", None)
         fp16 = self.config.get("fp16", True)
 
         self.tagger = CLAPTagger(model_id=model_id, device=device, fp16=fp16)
         self.tagger.load()
+
+        # --- Label embedding cache -------------------------------------
+        cache_path = self.config.get("label_cache_path")
+        if cache_path:
+            self.cache = LabelEmbeddingCache(cache_path)
+            n_labels = len(self.candidate_labels)
+
+            if self.cache.is_valid(expected_label_count=n_labels):
+                self.cache.load()
+                logger.info("Label cache loaded (%d labels).", n_labels)
+            else:
+                logger.info(
+                    "Label cache missing or stale — building now "
+                    "(one-time cost, ~30-60 s)…"
+                )
+                self.cache.build(
+                    tagger=self.tagger,
+                    candidate_labels=self.candidate_labels,
+                    label_to_category=self.label_to_category,
+                    label_to_subcategory=self.label_to_subcategory,
+                    label_to_cat_id=self.label_to_cat_id,
+                    label_to_category_full=self.label_to_category_full,
+                )
+                logger.info("Label cache built and saved to %s.", cache_path)
+        else:
+            logger.warning(
+                "label_cache_path not set in config — falling back to "
+                "slow per-file label encoding. Add 'label_cache_path' to "
+                "config.yaml to enable the embedding cache."
+            )
 
     # ------------------------------------------------------------------
     # Single-file analysis
@@ -125,11 +163,17 @@ class AudioAnalysisPipeline:
         features: AcousticFeatures = extract_features(af.waveform, af.sample_rate)
 
         # --- 3. Full-clip CLAP classification ----------------------------
-        full_scores: Dict[str, float] = self.tagger.classify(
-            waveform=af.waveform,
-            sr=af.sample_rate,
-            candidate_labels=self.candidate_labels,
-        )
+        if self.cache is not None:
+            # Fast path: embed audio once, score against cached text matrix
+            audio_embed = self.tagger.embed_audio(af.waveform, af.sample_rate)
+            full_scores: Dict[str, float] = self.cache.classify(audio_embed)
+        else:
+            # Legacy path: re-encode all labels on every file (slow)
+            full_scores = self.tagger.classify(
+                waveform=af.waveform,
+                sr=af.sample_rate,
+                candidate_labels=self.candidate_labels,
+            )
 
         logger.debug(
             "Top label: %s (%.3f)",
@@ -138,18 +182,26 @@ class AudioAnalysisPipeline:
         )
 
         # --- 4. Event detection (sliding window or single-clip fallback) -
-        events: List[SoundEvent] = self._detect_events(af, full_scores, features)
+        events: List[SoundEvent] = self._detect_events(
+            af, full_scores, features, audio_embed if self.cache else None
+        )
 
         # --- 5. Synthesize description -----------------------------------
+        # Prefer lookup dicts from the cache (they match what was scored)
+        l2cat   = self.cache.label_to_category      if self.cache else self.label_to_category
+        l2sub   = self.cache.label_to_subcategory   if self.cache else self.label_to_subcategory
+        l2catid = self.cache.label_to_cat_id        if self.cache else self.label_to_cat_id
+        l2full  = self.cache.label_to_category_full if self.cache else self.label_to_category_full
+
         description: DescriptionResult = synthesize_description(
             file_name=af.file_name,
             full_scores=full_scores,
             events=events,
             features=features,
-            label_to_category=self.label_to_category,
-            label_to_subcategory=self.label_to_subcategory,
-            label_to_cat_id=self.label_to_cat_id,
-            label_to_category_full=self.label_to_category_full,
+            label_to_category=l2cat,
+            label_to_subcategory=l2sub,
+            label_to_cat_id=l2catid,
+            label_to_category_full=l2full,
         )
 
         # --- 6. Assemble the output record -------------------------------
@@ -222,6 +274,7 @@ class AudioAnalysisPipeline:
         af: AudioFile,
         full_scores: Dict[str, float],
         features: AcousticFeatures,
+        audio_embed=None,  # pre-computed embedding when cache is active
     ) -> List[SoundEvent]:
         """Choose windowed or single-clip event detection based on duration."""
         if (
@@ -238,6 +291,7 @@ class AudioAnalysisPipeline:
                     window_seconds=self.window_seconds,
                     hop_seconds=self.hop_seconds,
                     min_confidence=self.min_confidence,
+                    cache=self.cache,  # None → legacy path; set → fast path
                 )
                 return events
             except Exception as exc:

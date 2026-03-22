@@ -19,6 +19,12 @@ model:
   # Only applied on CUDA — disabled automatically on MPS and CPU.
   fp16: true
 
+  # Path to the pre-computed label embedding cache (.pt file).
+  # Built automatically on first run, or manually via:
+  #   python scripts/build_label_cache.py
+  # Delete this file and re-run to rebuild after changing vocabulary.yaml.
+  label_cache_path: "config/label_cache.pt"
+
 # ---------------------------------------------------------------------------
 # Audio ingestion settings
 # ---------------------------------------------------------------------------
