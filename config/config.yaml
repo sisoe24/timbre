@@ -19,10 +19,18 @@ model:
   # Only applied on CUDA — disabled automatically on MPS and CPU.
   fp16: true
 
+  # Vocabulary file (relative to this config file's directory).
+  # vocabulary_refined.yaml  — 1,464 CLAP-optimised natural-language prompts
+  #                            (~2 per subcategory; recommended for accuracy)
+  # vocabulary.yaml          — 17,441 labels including UCS keyword synonyms
+  #                            (original; kept as a reference / fallback)
+  # Override on the CLI with: --vocab path/to/vocabulary.yaml
+  vocab_file: "vocabulary_refined.yaml"
+
   # Path to the pre-computed label embedding cache (.pt file).
   # Built automatically on first run, or manually via:
   #   python scripts/build_label_cache.py
-  # Delete this file and re-run to rebuild after changing vocabulary.yaml.
+  # Delete this file and re-run to rebuild after changing the vocabulary.
   label_cache_path: "config/label_cache.pt"
 
 # ---------------------------------------------------------------------------

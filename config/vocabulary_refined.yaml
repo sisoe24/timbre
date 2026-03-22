@@ -1,0 +1,3862 @@
+# ============================================================
+# Audio Analyzer — Refined CLAP Vocabulary (curated)
+# Generated from vocabulary.yaml by refine_vocab.py + curate_vocab.py
+#
+# Curation applied:
+#   - Compound 'the sound of [CATEGORY] [X]' labels rewritten
+#     to natural English
+#   - PAPER subcategory labels made subcategory-specific
+#   - FOLEY subcategory labels made subcategory-specific
+#   - Generic 'X sounds' second labels removed
+#   - 1392 labels across 753 subcategories
+# ============================================================
+
+categories:
+  AIR:
+    BLOW:
+      cat_id: AIRBlow
+      labels:
+      - the sound of a blow
+      - steady air blows, like from a compressed can of air
+    BURST:
+      cat_id: AIRBrst
+      labels:
+      - the sound of a burst
+      - sharp air releases, pressure releases, a tennis ball can popping open, a fire
+        extinguisher
+    HISS:
+      cat_id: AIRHiss
+      labels:
+      - the sound of hiss
+      - slow air releases, a flat tire, leak in an air pipe
+    MISC:
+      cat_id: AIRMisc
+      labels:
+      - the sound of air
+    SUCTION:
+      cat_id: AIRSuck
+      labels:
+      - the sound of a suction
+      - air being sucked in, a vacuum sucking in air, the rush of air in a shopvac
+  AIRCRAFT:
+    DOOR:
+      cat_id: AERODoor
+      labels:
+      - the sound of an aircraft door opening or closing
+    HELICOPTER:
+      cat_id: AEROHeli
+      labels:
+      - the sound of a helicopter
+    INTERIOR:
+      cat_id: AEROInt
+      labels:
+      - ambient interior sound inside an aircraft cabin
+    JET:
+      cat_id: AEROJet
+      labels:
+      - the sound of a jet aircraft engine
+      - the sound of a commercial jet aircraft in flight
+    MECHANISM:
+      cat_id: AEROMech
+      labels:
+      - mechanical sounds from aircraft components
+    MILITARY:
+      cat_id: AEROMil
+      labels:
+      - the sound of a military aircraft
+    MISC:
+      cat_id: AEROMisc
+      labels:
+      - the sound of a general aircraft
+    PROP:
+      cat_id: AEROProp
+      labels:
+      - the sound of a propeller aircraft
+      - the sound of a propeller-driven aircraft
+    RADIO CONTROLLED:
+      cat_id: AERORadio
+      labels:
+      - the sound of a radio controlled drone or quadcopter
+    ROCKET:
+      cat_id: AERORckt
+      labels:
+      - the sound of a rocket engine firing
+  ALARMS:
+    BELL:
+      cat_id: ALRMBell
+      labels:
+      - the sound of a bell
+      - all alarms which use bells, a school bell, fire alarm bell, a railroad crossing
+        bell
+    BUZZER:
+      cat_id: ALRMBuzr
+      labels:
+      - the sound of a buzzer
+      - all alarms using buzzers, or buzzers in general even if not technically an
+        alarm, would probably go here
+    CLOCK:
+      cat_id: ALRMClok
+      labels:
+      - the sound of a clock
+      - specifically alarm clocks, digital or analog
+    ELECTRONIC:
+      cat_id: ALRMElec
+      labels:
+      - an electronic alarm
+      - all electronic alarms, pure electronic tone alarms
+    MISC:
+      cat_id: ALRMMisc
+      labels:
+      - the sound of alarms
+    SIREN:
+      cat_id: ALRMSirn
+      labels:
+      - an alarm siren
+      - mechanical sirens, like old klaxons
+  AMBIENCE:
+    AIR:
+      cat_id: AMBAir
+      labels:
+      - the sound of an air
+      - quiet exterior 'air' with little activity, like exterior room tones, very
+        simple exterior ambiences
+    ALPINE:
+      cat_id: AMBAlpn
+      labels:
+      - the sound of an alpine
+      - mountain ambiences, for recordings and ambiences geographically linked to
+        alpine environments
+    AMUSEMENT:
+      cat_id: AMBAmus
+      labels:
+      - amusement park and carnival ambience
+      - theme parks and carnivals
+    BIRDSONG:
+      cat_id: AMBBird
+      labels:
+      - the sound of a birdsong
+      - group songbirds, like a dawn chorus of pretty birds, where the birds are the
+        prominent sound
+    CELEBRATION:
+      cat_id: AMBCele
+      labels:
+      - celebration ambience
+      - parties, new years eve
+    CONSTRUCTION:
+      cat_id: AMBCnst
+      labels:
+      - construction site ambience
+      - construction scenes with things like jackhammers, cranes, pile drivers, composite
+        construction scene, road construction also
+    DESERT:
+      cat_id: AMBDsrt
+      labels:
+      - quiet desert ambiences with appropriate insects and birds
+    DESIGNED:
+      cat_id: AMBDsgn
+      labels:
+      - a designed artificial ambient soundscape
+    EMERGENCY:
+      cat_id: AMBEmrg
+      labels:
+      - emergency situation ambience
+      - crime scenes, firefighting scenes, accident scenes, with things like firefighters,
+        police, ambulances and medics
+    FANTASY:
+      cat_id: AMBFant
+      labels:
+      - the sound of a fantasy
+      - magical or other wordly composite ambiences, soundscapes, think middle earth
+        or pandora
+    FARM:
+      cat_id: AMBFarm
+      labels:
+      - specifically farm ambiences, with animals, maybe tractors working, chickens,
+        etc
+    FOREST:
+      cat_id: AMBForst
+      labels:
+      - forest ambience recordings
+      - forest recordings or forest composite files
+    GRASSLAND:
+      cat_id: AMBGras
+      labels:
+      - the sound of a grassland
+      - prairies, meadows, grazing patures, etc
+    HISTORICAL:
+      cat_id: AMBHist
+      labels:
+      - historical environment ambience
+      - old west scenes, roman street scenes
+    HITECH:
+      cat_id: AMBTech
+      labels:
+      - hi-tech environment ambience
+    HOSPITAL:
+      cat_id: AMBHosp
+      labels:
+      - the sound of a hospital
+      - hospital ambiences of all kinds, surgery and emergency rooms too
+    INDUSTRIAL:
+      cat_id: AMBInd
+      labels:
+      - industrial factory ambience
+      - industrial warehouses and factories, plants or any ambience with an industrial
+        feeling
+    INSECT:
+      cat_id: AMBInsc
+      labels:
+      - insect ambience outdoors
+      - thick ambiences of insects, cicada and cricket beds mainly
+    LAKESIDE:
+      cat_id: AMBLake
+      labels:
+      - the sound of a lakeside
+      - ambiences relating to lakes, not isolated lapping, but the lake version of
+        ambience-seaside
+    MARKET:
+      cat_id: AMBMrkt
+      labels:
+      - busy market ambience
+      - busy exterior or interior market activity and crowds
+    MISC:
+      cat_id: AMBMisc
+      labels:
+      - the sound of ambience
+    NAUTICAL:
+      cat_id: AMBNaut
+      labels:
+      - the sound of a nautical
+      - relating to ships at sea, shipyards, things revolving around ships
+    OFFICE:
+      cat_id: AMBOffc
+      labels:
+      - office ambience
+      - workplaces, offices, people working, typing, telephones
+    PARK:
+      cat_id: AMBPark
+      labels:
+      - the sound of a park
+      - parks, mostly city or suburban, probably usually with some human activity,
+        city activity
+    PRISON:
+      cat_id: AMBPrisn
+      labels:
+      - prison environment ambience
+      - prisons and jails, reverberant inmate walla, jail doors, buzzers, that sort
+        of thing
+    PROTEST:
+      cat_id: AMBPrtst
+      labels:
+      - the sound of a protest
+    PUBLIC PLACE:
+      cat_id: AMBPubl
+      labels:
+      - ambience of a public place
+      - except for restaurants, for any other usually indoor public places such as
+        stores, lobbies, hotels, malls, museums
+    RELIGIOUS:
+      cat_id: AMBRlgn
+      labels:
+      - the sound of religious
+      - church and temples, church services, religious gatherings, pilgrimages
+    RESIDENTIAL:
+      cat_id: AMBHome
+      labels:
+      - the sound of a residential
+      - something busier than a room tone, an apartment, a house with some activity
+        from outside etc
+    RESTAURANT & BAR:
+      cat_id: AMBRest
+      labels:
+      - ambience restaurant & bar
+      - restaurants and bars, pubs, places of eating and drinking, mixed crowd with
+        glass clinks or silverware
+    ROOM TONE:
+      cat_id: AMBRoom
+      labels:
+      - simple room tone with minimal activity
+      - simple room tones with little or no activity
+    RURAL:
+      cat_id: AMBRurl
+      labels:
+      - the sound of a rural
+      - rural and countryside ambiences that don't fit somewhere else in this list
+    SCHOOL:
+      cat_id: AMBSchl
+      labels:
+      - the sound of a school
+      - schools of any age, kindergarten through college, hallways, lockers, voices,
+        school bells
+    SCIFI:
+      cat_id: AMBSci
+      labels:
+      - the sound of a scifi
+      - a composite sci-fi ambience, a complex background layered with many sci-fi
+        elements
+    SEASIDE:
+      cat_id: AMBSea
+      labels:
+      - beach and oceanside ambience
+      - relating to beach and oceanside scenes with people
+    SPORT:
+      cat_id: AMBSprt
+      labels:
+      - sports venue ambience
+      - sporting events, little league baseball to major league
+    SUBURBAN:
+      cat_id: AMBSubn
+      labels:
+      - the sound of a suburban
+      - suburban streets, average residential neighborhood, not dense like urban
+    SWAMP:
+      cat_id: AMBSwmp
+      labels:
+      - the sound of a swamp
+      - 'a wetland often partially or intermittently covered with water; especially
+        : one dominated by woody vegetation'
+    TOWN:
+      cat_id: AMBTown
+      labels:
+      - small town or suburban ambience
+      - something in between a city and a suburb
+    TRAFFIC:
+      cat_id: AMBTraf
+      labels:
+      - traffic ambience without people
+      - specifically traffic without people
+    TRANSPORTATION:
+      cat_id: AMBTran
+      labels:
+      - the sound of a transportation
+      - not vehicles, but public train stations, airports, bus stations, subway stations
+    TROPICAL:
+      cat_id: AMBTrop
+      labels:
+      - tropical jungle ambience
+      - jungles and rainforests, lush animal life and vegetation
+    TUNDRA:
+      cat_id: AMBTndra
+      labels:
+      - the sound of a tundra
+      - treeless environments where the ground is permanently frozen, arctic, antarctic
+    UNDERGROUND:
+      cat_id: AMBUndr
+      labels:
+      - the sound of an underground
+      - subterranean, underground ambiences like sewers, bunkers, tunnels, dungeons,
+        caves
+    UNDERWATER:
+      cat_id: AMBUndwtr
+      labels:
+      - underwater ambience
+      - underwater sounding ambiences, deep bubbles and that classic undersea world
+        sound
+    URBAN:
+      cat_id: AMBUrbn
+      labels:
+      - dense urban city ambience
+      - dense cities and environments
+    WARFARE:
+      cat_id: AMBWar
+      labels:
+      - the sound of a warfare
+      - battles, warfare, full ambiences here
+  ANIMALS:
+    AMPHIBIAN:
+      cat_id: ANMLAmph
+      labels:
+      - the sound of an amphibian
+      - technically any amphibian, but most likely used for frogs and toads
+    AQUATIC:
+      cat_id: ANMLAqua
+      labels:
+      - aquatic animal sounds
+      - all manner of marine and sea animals, not just mammals, but anything that
+        lives in water
+    BAT:
+      cat_id: ANMLBat
+      labels:
+      - the sound of a bat
+      - bat chirps, echolocation and communicative vocalization
+    CAT DOMESTIC:
+      cat_id: ANMLCat
+      labels:
+      - the sound of a domestic house cat
+    CAT WILD:
+      cat_id: ANMLWcat
+      labels:
+      - the sound of wild cats
+      - wild cats as opposed to domesticated cats
+    DOG:
+      cat_id: ANMLDog
+      labels:
+      - the sound of a dog
+      - all domesticated dogs, excluding wild dogs
+    DOG WILD:
+      cat_id: ANMLWdog
+      labels:
+      - the sound of wild dogs or wolves
+      - wild dogs and canines like wolves, foxes, coyotes etc
+    FARM:
+      cat_id: ANMLFarm
+      labels:
+      - farm animal sounds
+      - domesticated mammals you'd find on a farm
+    HORSE:
+      cat_id: ANMLHors
+      labels:
+      - the sound of a horse
+      - all members of the horse family, including donkeys and mules
+    INSECT:
+      cat_id: ANMLInsc
+      labels:
+      - all manner of traditional insect sounds, crickets, cicada, flies and bees
+    MISC:
+      cat_id: ANMLMisc
+      labels:
+      - the sound of animals
+      - other animals not finding a clear category
+    PRIMATE:
+      cat_id: ANMLPrim
+      labels:
+      - the sound of primates vocalizing
+      - all members of the primate family except humans
+    REPTILE:
+      cat_id: ANMLRept
+      labels:
+      - the sound of a reptile
+      - all reptiles including snakes, turtles and lizzards
+    RODENT:
+      cat_id: ANMLRdnt
+      labels:
+      - the sound of a rodent
+      - all manner 'gnawing' animals like rats and mice
+    WILD:
+      cat_id: ANMLWild
+      labels:
+      - the sound of a wild
+      - any wild animal not explicitly defined by the list, and not domesticated
+  ARCHIVED:
+    ADR:
+      cat_id: ADR
+      labels:
+      - the sound of an adr
+      - re-recorded lines via the adr process
+    ASSET:
+      cat_id: ASSET
+      labels:
+      - the sound of an asset
+      - a delivered or stored asset, most likely for video game use, but something
+        used in the development of a project
+    BOUNCE:
+      cat_id: BNCE
+      labels:
+      - the sound of a bounce
+      - bounces made for picture department, layered bounces
+    IMPULSE RESPONSE:
+      cat_id: IR
+      labels:
+      - an impulse response recording
+      - impulse responses, reverb and otherwise
+    LOOP GROUP:
+      cat_id: LPGRP
+      labels:
+      - loop group crowd recordings
+      - loop group crowds or lines
+    MIX:
+      cat_id: MIX
+      labels:
+      - the sound of a mix
+      - premixes, final mixes, mixdowns, stems
+    PFX:
+      cat_id: PFX
+      labels:
+      - the sound of a pfx
+      - fx stolen from production takes only
+    PRODUCTION:
+      cat_id: PROD
+      labels:
+      - the sound of a production
+      - production takes, dialog lines and other spoken line production takes
+    RAW:
+      cat_id: RAW
+      labels:
+      - the sound of a raw
+      - raw recording files, for example a load of a full dat tape
+    REFERENCE:
+      cat_id: REF
+      labels:
+      - the sound of a reference
+      - reference material, often restricted, used for reference only
+    SCENE:
+      cat_id: SCNE
+      labels:
+      - the sound of a scene
+      - pre-built scenes and soundscapes, designed scenes
+    TEST TONE:
+      cat_id: TEST
+      labels:
+      - a test tone or calibration signal
+      - test tones used for calibration, adr beeps, pink noise, sine wave sweeps
+    TRADEMARKED:
+      cat_id: TMARK
+      labels:
+      - the sound of a trademarked
+      - for trademarked or copyright sounds that you need to store in your library
+    WORK IN PROGRESS:
+      cat_id: WIP
+      labels:
+      - archived work in progress
+      - files that aren't fully metadata'd, or mastered, tag to remind you there is
+        work to do
+    WTF:
+      cat_id: WTF
+      labels:
+      - the sound of a wtf
+      - literally what it says 'what the f_ck' is this sound
+  BEEPS:
+    APPLIANCE:
+      cat_id: BEEPAppl
+      labels:
+      - appliance beep sounds
+      - microwave oven beeps, dishwasher beeps
+    GENERAL:
+      cat_id: BEEP
+      labels:
+      - the sound of beeps general
+    LOFI:
+      cat_id: BEEPLofi
+      labels:
+      - the sound of a lofi
+      - very low fidelity, old 8-bit beeps
+    MEDICAL:
+      cat_id: BEEPMed
+      labels:
+      - medical device beeps
+      - beeps from various medical devices, ekg, life support
+    TIMER:
+      cat_id: BEEPTimer
+      labels:
+      - the sound of a timer
+      - specifically timer beeps, counting down
+    VEHICLE:
+      cat_id: BEEPVeh
+      labels:
+      - the sound of a vehicle
+      - backup beeps from a large truck or construction vehicle
+  BELLS:
+    ANIMAL:
+      cat_id: BELLAnml
+      labels:
+      - the sound of an animal
+      - bells attached to animals, like cow and sheep bells, or a dog or cat collar
+        with a bell on it
+    DOORBELL:
+      cat_id: BELLDoor
+      labels:
+      - the sound of a doorbell
+    GONG:
+      cat_id: BELLGong
+      labels:
+      - the sound of a gong
+      - a large flat circular disc hit with a mallet
+    HANDBELL:
+      cat_id: BELLHand
+      labels:
+      - the sound of a handbell
+      - small to medium hand bells, dinner bells
+    LARGE:
+      cat_id: BELLLrg
+      labels:
+      - the sound of a large
+      - large bells like a church bell or tower bell, or city hall bells, big ben
+    MISC:
+      cat_id: BELLMisc
+      labels:
+      - the sound of bells
+  BIRDS:
+    BIRD OF PREY:
+      cat_id: BIRDPrey
+      labels:
+      - birds bird of prey
+      - birds that prey on vertebrates, especially rodents
+    CROW:
+      cat_id: BIRDCrow
+      labels:
+      - the sound of a crow
+      - birds in corvid family, which includes crows and ravens
+    FOWL:
+      cat_id: BIRDFowl
+      labels:
+      - the sound of a fowl
+      - landfowl, wildfowl and waterfowl, also poultry
+    MISC:
+      cat_id: BIRDMisc
+      labels:
+      - the sound of birds
+    SEA:
+      cat_id: BIRDSea
+      labels:
+      - the sound of a sea
+      - birds that live mostly near the ocean
+    SONGBIRD:
+      cat_id: BIRDSong
+      labels:
+      - the sound of a songbird
+      - specifically singing birds, warblers, robins, thrushes, what you imagine pretty
+        dawn chorus birds
+    TROPICAL:
+      cat_id: BIRDTrop
+      labels:
+      - the sound of a tropical
+      - birds living in tropical locations, jungle and tropical rainforest birds
+    WADING:
+      cat_id: BIRDWade
+      labels:
+      - the sound of a wading
+      - long-legged, long-billed birds that feed primarily in shallow water
+  BOATS:
+    AIR BOAT:
+      cat_id: BOATAir
+      labels:
+      - the sound of an airboat fan
+      - specifically large fan airboats used in swamps
+    BOW WASH:
+      cat_id: BOATWash
+      labels:
+      - the sound of a boat's bow wash through water
+      - the waves pushed up by a boat or ship going through the water, a relatively
+        clean recording
+    DOOR:
+      cat_id: BOATDoor
+      labels:
+      - a boat or ship door
+      - boat or submarine doors
+    ELECTRIC:
+      cat_id: BOATElec
+      labels:
+      - an electric boat
+      - any boat powered by electricity
+    FISHING:
+      cat_id: BOATFish
+      labels:
+      - the sound of a fishing
+      - industrial fishing boats, crab boats, trawlers
+    HORN:
+      cat_id: BOATHorn
+      labels:
+      - a boat or ship horn
+      - horns on boats and ships
+    INTERIOR:
+      cat_id: BOATInt
+      labels:
+      - interior ambience of a boat or ship
+      - interior ambiences on boats and ships, ferries, cruise ships, navy ships
+    MECHANISM:
+      cat_id: BOATMech
+      labels:
+      - mechanical sounds from a boat
+      - all manner of boat mechanisms
+    MILITARY:
+      cat_id: BOATMil
+      labels:
+      - a military boat or naval vessel
+      - specifically military boats and ships, destroyers, aircraft carriers
+    MISC:
+      cat_id: BOATMisc
+      labels:
+      - the sound of boats
+    MOTORBOAT:
+      cat_id: BOATMotr
+      labels:
+      - the sound of a motorboat
+      - general small boats, personal fishing boats, speedboats, pontoon boats
+    RACING:
+      cat_id: BOATRace
+      labels:
+      - a racing boat
+      - powered racing boats, not for human powered racing boats, those would go under
+        boats-rowing
+    ROWBOAT:
+      cat_id: BOATRow
+      labels:
+      - the sound of a rowboat
+      - canoes, rowboats, kayaks probably, human powered boats that use oars and paddles,
+        even racing rowboats
+    SAILBOAT:
+      cat_id: BOATSail
+      labels:
+      - the sound of a sailboat
+      - composite recordings of rigging and sails, isolated elements to cloth-flap
+        for close sails, or boats-mechanism for rigging
+    SHIP:
+      cat_id: BOATShip
+      labels:
+      - the sound of a ship
+      - large ship, passenger cruise ships, oil tankers, things relating to these
+    STEAM:
+      cat_id: BOATStm
+      labels:
+      - a steam-powered boat
+      - old steam paddle boats, big steam ship sounds
+    SUBMARINE:
+      cat_id: BOATSub
+      labels:
+      - the sound of a submarine
+      - relating to a submarine, include sonar pings
+    UNDERWATER:
+      cat_id: BOATUndwtr
+      labels:
+      - underwater sounds from a boat
+      - specifically boats and ships recorded underwater, usually hydrophone recordings
+  BULLETS:
+    BY:
+      cat_id: BLLTBy
+      labels:
+      - the sound of a by
+      - bullet pass bys in air, or underwater
+    IMPACT:
+      cat_id: BLLTImpt
+      labels:
+      - the sound of bullet impact
+      - bullet hits and impacts, on a bullet hit on any material from the ground,
+        to wood, to a person
+    MISC:
+      cat_id: BLLTMisc
+      labels:
+      - the sound of bullets
+    RICOCHET:
+      cat_id: BLLTRico
+      labels:
+      - the sound of a ricochet
+      - bullet ricochets, that classic old west 'ping' when a bullet bounces off something
+    SHELL:
+      cat_id: BLLTShel
+      labels:
+      - the sound of a shell
+      - bullet shells ejecting and dropping to the ground
+  CARTOON:
+    ANIMAL:
+      cat_id: TOONAnml
+      labels:
+      - the sound of cartoon animal
+      - cartoon animals, made from animals calls, props, etc
+    BOING:
+      cat_id: TOONBoing
+      labels:
+      - the sound of a boing
+      - cartoon boings, like for a bouncing cartoon character
+    CLANG:
+      cat_id: TOONClang
+      labels:
+      - the sound of a clang
+      - cartoon clangs, like a funny anvil hit
+    CREAK:
+      cat_id: TOONCreak
+      labels:
+      - the sound of cartoon creak
+      - cartoon creaks, some overlap or confusion with cartoon-stretch possible
+    HORN:
+      cat_id: TOONHorn
+      labels:
+      - the sound of a horn
+      - cartoon horns, as in bulb horns, clown horns
+    IMPACT:
+      cat_id: TOONImpt
+      labels:
+      - the sound of cartoon impact
+      - cartoon hits, bonk, boink, doink
+    MACHINE:
+      cat_id: TOONMach
+      labels:
+      - the sound of a machine
+      - cartoon machines, an overly comical sounding machine or contraption
+    MISC:
+      cat_id: TOONMisc
+      labels:
+      - the sound of cartoon
+    MUSICAL:
+      cat_id: TOONMx
+      labels:
+      - the sound of a musical
+    PLUCK:
+      cat_id: TOONPluk
+      labels:
+      - the sound of a pluck
+      - cartoon string plucks, violin plucks, dental floss plucks
+    POP:
+      cat_id: TOONPop
+      labels:
+      - the sound of a pop
+      - cartoon funny pops, mouth pops, suction cup pops
+    SHAKE:
+      cat_id: TOONShake
+      labels:
+      - the sound of a shake
+      - cartoon shake, like a noisemaker toy, maraca
+    SPLAT:
+      cat_id: TOONSplt
+      labels:
+      - the sound of a splat
+      - cartoon splats, funny liquid and mud like splats and things
+    SQUEAK:
+      cat_id: TOONSqk
+      labels:
+      - the sound of cartoon squeak
+    STRETCH:
+      cat_id: TOONStrch
+      labels:
+      - the sound of cartoon stretch
+      - cartoon stretches, funny rubber or other type stretching sounds, exaggerated
+    SWISH:
+      cat_id: TOONSwsh
+      labels:
+      - the sound of cartoon swish
+      - cartoon swishes, specifically very funny cartoony swishes
+    TWANG:
+      cat_id: TOONTwang
+      labels:
+      - the sound of a twang
+      - cartoon twangs, that classic ruler twang type sound
+    VEHICLE:
+      cat_id: TOONVeh
+      labels:
+      - the sound of a vehicle
+      - cartoon vehicles, think jetsons spaceship or flintstones cars
+    VOCAL:
+      cat_id: TOONVox
+      labels:
+      - cartoon vocal or voice sound effect
+      - cartoon vocals, specifically very silly
+    WARBLE:
+      cat_id: TOONWarb
+      labels:
+      - the sound of a warble
+    WHISTLE:
+      cat_id: TOONWhis
+      labels:
+      - the sound of a whistle
+      - cartoon whistles, most likely slide whistles, other very silly whistles
+    ZIP:
+      cat_id: TOONZip
+      labels:
+      - the sound of a zip
+  CERAMICS:
+    BREAK:
+      cat_id: CERMBrk
+      labels:
+      - the sound of ceramic break
+      - ceramics break of a more singular nature, a plate shatter, breaking, cracking,
+        crunching
+    CRASH & DEBRIS:
+      cat_id: CERMCrsh
+      labels:
+      - ceramics crash & debris
+      - ceramics destruction of more of a group nature, multiple crashes and debris
+    FRICTION:
+      cat_id: CERMFric
+      labels:
+      - the sound of ceramic friction
+      - ceramics friction, scraping, squeaking, screeching
+    HANDLE:
+      cat_id: CERMHndl
+      labels:
+      - the sound of ceramic handle
+      - ceramics handling, picking up a coffee mug, handling a plant pot
+    IMPACT:
+      cat_id: CERMImpt
+      labels:
+      - the sound of ceramic impact
+      - ceramics impacts without breaking, so hits drops, clunks and clinks
+    MISC:
+      cat_id: CERMMisc
+      labels:
+      - the sound of ceramics
+      - ceramics sounds
+    MOVEMENT:
+      cat_id: CERMMvmt
+      labels:
+      - the sound of ceramic movement
+      - ceramics single or group movement, so dragging, shaking and rattling
+    TONAL:
+      cat_id: CERMTonl
+      labels:
+      - the sound of ceramic tonal
+      - ceramics ringing, as in being bowed
+  CHAINS:
+    BREAK:
+      cat_id: CHAINBrk
+      labels:
+      - the sound of chain break
+      - chain snapping or breaking, that sharp sound of a chain failing
+    HANDLE:
+      cat_id: CHAINHndl
+      labels:
+      - the sound of chain handle
+      - chain handling, repairing a bike chain, a prisoner moving around in chains
+    IMPACT:
+      cat_id: CHAINImpt
+      labels:
+      - the sound of chain impact
+      - chain impacts, such a big chain hit or slam, or a tension snap of a chain
+        being pulled taut
+    MISC:
+      cat_id: CHAINMisc
+      labels:
+      - the sound of chains
+    MOVEMENT:
+      cat_id: CHAINMvmt
+      labels:
+      - the sound of chain movement
+      - chain handling, particularly being pulled through pulleys or across surfaces
+  CHEMICALS:
+    ACID:
+      cat_id: CHEMAcid
+      labels:
+      - the sound of an acid
+      - chemical acid burning and sizzling, bubbling
+    MISC:
+      cat_id: CHEMMisc
+      labels:
+      - the sound of chemicals
+    REACTION:
+      cat_id: CHEMReac
+      labels:
+      - the sound of chemicals reaction
+      - chemical reactions, chemistry set, bubbling, foaming, bunsen burner reactions
+  CLOCKS:
+    CHIME:
+      cat_id: CLOCKChim
+      labels:
+      - the sound of a chime
+      - chimes, bells specifically for a clock, grandfather clock chimes
+    MECHANICS:
+      cat_id: CLOCKMech
+      labels:
+      - the sound of mechanics
+      - clocks winding, complex mechanical clock mechanisms
+    MISC:
+      cat_id: CLOCKMisc
+      labels:
+      - the sound of clocks
+    TICK:
+      cat_id: CLOCKTick
+      labels:
+      - the sound of a tick
+      - analog ticking clocks and watches of all sizes, also mechanical stop watches
+  CLOTH:
+    FLAP:
+      cat_id: CLOTHFlp
+      labels:
+      - the sound of a flap
+      - cloth flapping, as in a flag flapping, or superman's cape
+    HANDLE:
+      cat_id: CLOTHHndl
+      labels:
+      - the sound of fabric handle
+      - cloth handling, grabbing a jacket, clothy arm grabs, etc
+    IMPACT:
+      cat_id: CLOTHImpt
+      labels:
+      - the sound of fabric impact
+      - cloth impacts, throwing a jacket forcefully to the floor, a wet towel snap
+    MISC:
+      cat_id: CLOTHMisc
+      labels:
+      - the sound of cloth
+    MOVEMENT:
+      cat_id: CLOTHMvmt
+      labels:
+      - the sound of fabric movement
+      - varied cloth movement except flapping which has its own category
+    RIP:
+      cat_id: CLOTHRip
+      labels:
+      - the sound of fabric rip
+      - various cloth rips and tears, short to long
+  COMMUNICATIONS:
+    AUDIO VISUAL:
+      cat_id: COMAv
+      labels:
+      - communications audio visual
+      - various av devices such a projector or tape recorder, video cameras here too
+    CAMERA:
+      cat_id: COMCam
+      labels:
+      - the sound of a camera
+      - still camera shutters, automatic winding, old flash-bulbs
+    CELLPHONE:
+      cat_id: COMCell
+      labels:
+      - the sound of a cellphone
+      - cellphones and smartphones
+    MICROPHONE:
+      cat_id: COMMic
+      labels:
+      - the sound of a microphone
+      - feedback and mic bumps and handling
+    MISC:
+      cat_id: COMMisc
+      labels:
+      - the sound of communications
+    PHONOGRAPH:
+      cat_id: COMPhono
+      labels:
+      - the sound of a phonograph
+      - turntable, victrola, motors and mechanics
+    RADIO:
+      cat_id: COMRadio
+      labels:
+      - the sound of a radio
+      - tuning, radio and shortwave sounds
+    STATIC:
+      cat_id: COMStatic
+      labels:
+      - the sound of a static
+      - static from any electronic source, radio, cb, television, optical noise, phonograph
+        noise
+    TELEMETRY:
+      cat_id: COMTelm
+      labels:
+      - the sound of a telemetry
+      - fax machine tones, modem tones, telegraph, teletype
+    TELEPHONE:
+      cat_id: COMTelph
+      labels:
+      - the sound of a telephone
+      - old school rotary dial and digital telephones
+    TELEVISION:
+      cat_id: COMTv
+      labels:
+      - the sound of a television
+      - television programs, on and off, channel changes, tv remote controls
+    TRANSCEIVER:
+      cat_id: COMTran
+      labels:
+      - the sound of a transceiver
+      - walkie talkies, cbs, ham radios, all two-way transceivers and radios go here
+    TYPEWRITER:
+      cat_id: COMType
+      labels:
+      - the sound of a typewriter
+      - old school typewriters, not modern computer keyboards
+  COMPUTERS:
+    HARD DRIVE:
+      cat_id: CMPTDriv
+      labels:
+      - the sound of a computer hard drive
+      - laptop or other hard drive seeking sounds, data reading
+    KEYBOARD & MOUSE:
+      cat_id: CMPTKey
+      labels:
+      - computers keyboard & mouse
+      - typing on computer keyboard, and mouse movement
+    MISC:
+      cat_id: CMPTMisc
+      labels:
+      - the sound of computers
+  CREATURES:
+    AQUATIC:
+      cat_id: CREAAqua
+      labels:
+      - aquatic creature sounds
+      - giant mutant squids or sea monsters, kraken, leviathans
+    AVIAN:
+      cat_id: CREAAvian
+      labels:
+      - the sound of an avian
+      - alien or fantasy birds, or weird birdlike creatures
+    BEAST:
+      cat_id: CREABeast
+      labels:
+      - the sound of creatures beast
+      - big four legged creatures and beasts
+    BLOB:
+      cat_id: CREABlob
+      labels:
+      - the sound of a blob
+      - gelatinous and gooey type creatures, gelatinous cube
+    DINOSAUR:
+      cat_id: CREADino
+      labels:
+      - the sound of a dinosaur
+      - dinosaurs of all types, jurassic park
+    DRAGON:
+      cat_id: CREADrgn
+      labels:
+      - the sound of a dragon
+      - game of thrones, lord of the rings, dragons of all types
+    ELEMENTAL:
+      cat_id: CREAElem
+      labels:
+      - elemental creature sounds
+      - creatures based on elements, rock giants, fire creatures, ice monsters, such
+        a the balrog, or a rock giant
+    ETHEREAL:
+      cat_id: CREAEthr
+      labels:
+      - the sound of creatures ethereal
+      - ghosts, spirits, ethereal vocals and wispy movement, apparitions
+    HUMANOID:
+      cat_id: CREAHmn
+      labels:
+      - the sound of a humanoid
+      - human sized mythical creatures, so zombies and vampires, elves etc
+    INSECTOID:
+      cat_id: CREAInsc
+      labels:
+      - the sound of creatures insectoid
+      - giant spiders or other insect like creatures
+    MISC:
+      cat_id: CREAMisc
+      labels:
+      - the sound of creatures
+    MONSTER:
+      cat_id: CREAMnstr
+      labels:
+      - the sound of a monster
+      - godzilla, scary monsters, horror monsters
+    REPTILIAN:
+      cat_id: CREARept
+      labels:
+      - the sound of a reptilian
+      - giant lizards and snakes, large giant hissing monsters
+    SMALL:
+      cat_id: CREASmall
+      labels:
+      - the sound of creatures small
+      - specifically small mythical creatures
+    SOURCE:
+      cat_id: CREASrce
+      labels:
+      - creature source audio
+      - source recordings meant for creature design, like prop recordings, human voice
+        packs for design, etc
+  CROWDS:
+    ANGRY:
+      cat_id: CRWDAngr
+      labels:
+      - the sound of an angry
+      - crowds of upset or angry people, as in a riot, protest, a schoolyard fight
+    APPLAUSE:
+      cat_id: CRWDApls
+      labels:
+      - crowd applause and clapping
+      - crowds where the applause is predominantly featured
+    BATTLE:
+      cat_id: CRWDBatl
+      labels:
+      - the sound of a battle
+      - crowds in battle, fighting, yelling screaming, dying
+    CELEBRATION:
+      cat_id: CRWDCele
+      labels:
+      - crowd celebrating
+      - crowds celebrating holidays, parties, rowdy crowds
+    CHEERING:
+      cat_id: CRWDCheer
+      labels:
+      - the sound of a cheering
+      - could include applause, but cheering crowds where the crowd vocals are predominant
+    CHILDREN:
+      cat_id: CRWDChld
+      labels:
+      - the sound of a children
+      - relatively clean vocals of children together, playing in a playground, in
+        a school classroom, recess, school hallway
+    CONVERSATION:
+      cat_id: CRWDConv
+      labels:
+      - the sound of a conversation
+      - a small enough group chat that you can discern words, smaller and less active
+        than a walla
+    LAUGHTER:
+      cat_id: CRWDLaff
+      labels:
+      - the sound of a laughter
+      - crowds laughing, a comedy show, canned television laughter, groups of kids
+        laughing, at a party for example
+    LOOP GROUP:
+      cat_id: CRWDLoop
+      labels:
+      - loop group crowd recordings
+      - for loop group type walla, usually performed for or to picture, specific environments,
+        specific callouts
+    MISC:
+      cat_id: CRWDMisc
+      labels:
+      - the sound of crowds
+    PANIC:
+      cat_id: CRWDPanic
+      labels:
+      - the sound of a panic
+      - distressed crowds, mixed screams and crying and reactions… crowds in a natural
+        disaster or crowds in a giant monster attack
+    QUIET:
+      cat_id: CRWDQuiet
+      labels:
+      - the sound of a quiet
+      - very quiet crowds, mostly mumbling or murmuring
+    REACTION:
+      cat_id: CRWDReac
+      labels:
+      - crowd reaction vocalizations
+      - big ooos, and aaahs and booos, big group responses to events happening
+    SINGING:
+      cat_id: CRWDSing
+      labels:
+      - the sound of a singing
+      - singing during sporting events, new year's eve crowds singing auld lang syne,
+        christmas carols
+    SPORT:
+      cat_id: CRWDSprt
+      labels:
+      - sports crowd
+      - clean crowds at sporting events, baseball, football
+    WALLA:
+      cat_id: CRWDWalla
+      labels:
+      - the sound of a walla
+      - specifically very clean crowd walla, with non-discernible words
+  DESIGNED:
+    BASS DIVE:
+      cat_id: DSGNBass
+      labels:
+      - a designed bass dive sound effect
+      - deep descending bass notes
+    BOOM:
+      cat_id: DSGNBoom
+      labels:
+      - the sound of a boom
+      - deep short and tight, low end stingers, big trailer deep hits
+    BRAAM:
+      cat_id: DSGNBram
+      labels:
+      - a designed braam — deep long horn-like sound
+      - long deep horn like sounds
+    DISTORTION:
+      cat_id: DSGNDist
+      labels:
+      - a heavily distorted designed sound effect
+      - particulary distored designed sounds and distortion elements
+    DRONE:
+      cat_id: DSGNDron
+      labels:
+      - the sound of a drone
+      - designed drones, eerie tense drones, long stylized sounds with not much activity
+        or movement
+    EERIE:
+      cat_id: DSGNErie
+      labels:
+      - the sound of an eerie
+      - often designed, but tense strange undefined sounds that are eerie, tense,
+        suspenseful
+    ETHEREAL:
+      cat_id: DSGNEthr
+      labels:
+      - an ethereal wispy designed sound
+      - ethereal wispy designed sounds
+    GRANULAR:
+      cat_id: DSGNGran
+      labels:
+      - the sound of a granular
+      - granular synthesis, sounds that have a gritty textural type sound, think paulstretch,
+        sounds broken down into tiny slices and recompiled
+    IMPACT:
+      cat_id: DSGNImpt
+      labels:
+      - the sound of designed impact
+      - designed huge impacts, collisions, stylized big hits
+    MISC:
+      cat_id: DSGNMisc
+      labels:
+      - the sound of designed
+    MORPH:
+      cat_id: DSGNMorph
+      labels:
+      - the sound of a morph
+      - a stylized blending of elements, something transitioning into another thing
+    RISER:
+      cat_id: DSGNRise
+      labels:
+      - the sound of a riser
+      - tension risers, things rising in tone, something similar to a rising string
+        line to create tension
+    RUMBLE:
+      cat_id: DSGNRmbl
+      labels:
+      - a designed low-frequency rumble for mixing
+      - designed rumbles for layering into a mix
+    RHYTHMIC:
+      cat_id: DSGNRythm
+      labels:
+      - the sound of a rhythmic
+      - stattaco or glitchy machine type loops, things with definied starts, stops,
+        rhythmic stutters
+    SOURCE:
+      cat_id: DSGNSrce
+      labels:
+      - designed source audio
+      - for recordings meant to be used as source for other designed sounds, experimental
+        recordings, elements, etc
+    STINGER:
+      cat_id: DSGNStngr
+      labels:
+      - the sound of a stinger
+      - stings, stylized screen sweeteners
+    SYNTHETIC:
+      cat_id: DSGNSynth
+      labels:
+      - the sound of a synthetic
+      - very synthesized sounds, very electronic synth stuff
+    TONAL:
+      cat_id: DSGNTonl
+      labels:
+      - a tonal pitched designed sound
+      - designed sounds with a particularly tonal nature
+    VOCAL:
+      cat_id: DSGNVocl
+      labels:
+      - a designed vocal sound effect
+      - design specifically around vocals, ghostly whispers, enchanted spells, reversed
+        talking etc
+    WHOOSH:
+      cat_id: DSGNWhsh
+      labels:
+      - a designed whoosh sound effect
+      - stylized designed big whooshes, definite possible overlap confusion with shooshes-whoosh,
+        but this for less natural and more stylized versions
+  DESTRUCTION:
+    COLLAPSE:
+      cat_id: DESTRClpse
+      labels:
+      - the sound of a collapse
+      - buildings and large mixed complex collapses, a barn collapse, godzilla pushing
+        over a building
+    CRASH & DEBRIS:
+      cat_id: DESTRCrsh
+      labels:
+      - destruction crash & debris
+      - mixed crashes, complex crashes involving more than one material
+    MISC:
+      cat_id: DESTRMisc
+      labels:
+      - the sound of destruction
+  DIRT & SAND:
+    CRASH & DEBRIS:
+      cat_id: DIRTCrsh
+      labels:
+      - dirt & sand crash & debris
+      - dirt or sand settling, as in after an explosion, big sprays of dirt and sand
+    DUST:
+      cat_id: DIRTDust
+      labels:
+      - dirt & sand dust
+      - settling dust, dust clouds, much lighter sound than dirt & sand-debris
+    HANDLE:
+      cat_id: DIRTHndl
+      labels:
+      - dirt & sand handle
+      - handling dirt & sand, hands digging through dirt, children making a sand castle
+    IMPACT:
+      cat_id: DIRTImpt
+      labels:
+      - dirt & sand impact
+      - big hits and impacts of dirt of sand, dirt clods
+    MISC:
+      cat_id: DIRTMisc
+      labels:
+      - dirt & sand misc
+      - dirt, sand and earth sounds
+    MOVEMENT:
+      cat_id: DIRTMvmt
+      labels:
+      - dirt & sand movement
+      - pouring, flowing of dirt or sand, a big sand pour
+    TONAL:
+      cat_id: DIRTTonl
+      labels:
+      - the sound of singing sand dunes
+      - dirt & sand tonal
+  DOORS:
+    ANTIQUE:
+      cat_id: DOORAntq
+      labels:
+      - an antique door
+      - very old sounding doors, as in an old castle or abbey
+    APPLIANCE:
+      cat_id: DOORAppl
+      labels:
+      - appliance door sounds
+      - appliance doors such as oven, dishwasher, refrigerator or microwave
+    CABINET:
+      cat_id: DOORCab
+      labels:
+      - the sound of a cabinet
+      - cabinet doors, such as kitchen cabinet, tool cabinets
+    COMPOSITE:
+      cat_id: DOORComp
+      labels:
+      - the sound of a composite
+      - fiberglass, wood steel combination, doors that don't sound like a specific
+        material
+    CREAK:
+      cat_id: DOORCreak
+      labels:
+      - a creaking door
+      - door creaks, wood or metal
+    DUNGEON:
+      cat_id: DOORDungn
+      labels:
+      - the sound of a dungeon
+      - that big old classic wood and/or metal heavy dungeon, castle type door
+    ELECTRIC:
+      cat_id: DOORElec
+      labels:
+      - the sound of door electric
+      - electric doors of all kinds, garage doors, big soundstage doors, sliding store
+        doors
+    GATE:
+      cat_id: DOORGate
+      labels:
+      - the sound of a gate
+      - non-motorized gates, metal or wood
+    GLASS:
+      cat_id: DOORGlas
+      labels:
+      - a glass door
+      - glass doors, manual shopping store doors, glass home front doors
+    HARDWARE:
+      cat_id: DOORHdwr
+      labels:
+      - door hardware, handles, locks, and hinges
+      - door knobs, door locks, deadbolts, chain locks, push bars
+    HITECH:
+      cat_id: DOORTech
+      labels:
+      - a hi-tech or sci-fi door sound
+      - james bond type doors, something not quite sci-fi but more advanced, modern
+        lab, or air sealed chamber, vaults
+    HYDRAULIC & PNEUMATIC:
+      cat_id: DOORHydr
+      labels:
+      - doors hydraulic & pneumatic
+      - self closing doors, lots of office and store doors are of this type
+    KNOCK:
+      cat_id: DOORKnck
+      labels:
+      - knocking on a door
+      - knocking on various door surfaces
+    METAL:
+      cat_id: DOORMetl
+      labels:
+      - a metal door
+      - metal doors, like a vault door or heavy door
+    MISC:
+      cat_id: DOORMisc
+      labels:
+      - the sound of doors
+    PLASTIC:
+      cat_id: DOORPlas
+      labels:
+      - a plastic door
+      - doors made out of plastic
+    PRISON:
+      cat_id: DOORPrisn
+      labels:
+      - the sound of a prison
+      - big metal jail and prison doors
+    REVOLVING:
+      cat_id: DOORRevl
+      labels:
+      - the sound of a revolving
+      - classic revolving doors used as entries to hotels, banks, malls
+    SLIDING:
+      cat_id: DOORSlid
+      labels:
+      - the sound of a sliding
+      - manual sliding doors, such as a patio door, sliding shower doors
+    STONE:
+      cat_id: DOORSton
+      labels:
+      - the sound of a stone
+      - mostly a fantasy type door, but think gates of moria, big tombstone vault
+        doors
+    SWINGING:
+      cat_id: DOORSwng
+      labels:
+      - the sound of a swinging
+      - swinging doors, like old-west saloon or church pulpit doors
+    WOOD:
+      cat_id: DOORWood
+      labels:
+      - a wooden door
+      - wood doors, home, school, most general door category probably
+  DRAWERS:
+    METAL:
+      cat_id: DRWRMetl
+      labels:
+      - a metal drawer
+      - metal drawers like on a toolbox
+    MISC:
+      cat_id: DRWRMisc
+      labels:
+      - the sound of drawers
+    PLASTIC:
+      cat_id: DRWRPlas
+      labels:
+      - a plastic drawer
+      - plastic drawers, maybe on a parts bin
+    WOOD:
+      cat_id: DRWRWood
+      labels:
+      - a wooden drawer
+      - kitchen drawers, bathroom drawers
+  ELECTRICITY:
+    ARC:
+      cat_id: ELECArc
+      labels:
+      - the sound of an arc
+      - a longer movement of electricity, think jacob's ladder, or a power station
+        switching arc when decoupled
+    BUZZ & HUM:
+      cat_id: ELECBuzz
+      labels:
+      - electricity buzz & hum
+      - ground hum, buzzes, steady electrical hums, guitar pickup hum, amp hum
+    ELECTROMAGNETIC:
+      cat_id: ELECEmf
+      labels:
+      - the sound of electricity electromagnetic
+      - electromagnetic field recordings specifically
+    MISC:
+      cat_id: ELECMisc
+      labels:
+      - the sound of electricity
+    SPARKS:
+      cat_id: ELECSprk
+      labels:
+      - the sound of sparks
+      - think sparklers, or a downed power line emitting sparks, welding
+    ZAP:
+      cat_id: ELECZap
+      labels:
+      - the sound of a zap
+      - a short, shocking fast percussive electrical sound
+  EQUIPMENT:
+    BRIDLE & TACK:
+      cat_id: EQUIPBridle
+      labels:
+      - equipment bridle & tack
+      - equipment for animals use
+    HITECH:
+      cat_id: EQUIPTech
+      labels:
+      - hi-tech equipment sounds
+      - hi-tech gear, things like spacesuits, complex suits with lots of gizmos or
+        complex parts
+    MISC:
+      cat_id: EQUIPMisc
+      labels:
+      - the sound of equipment
+    RECREATIONAL:
+      cat_id: EQUIPRec
+      labels:
+      - the sound of equipment recreational
+      - recreational gear, like backpacks, hiking gear, rock climbing harnesses, camping
+        tents
+    SPORT:
+      cat_id: EQUIPSprt
+      labels:
+      - sports equipment sounds
+      - gear worn while playing sports, american football shoulder pads, hockey gear,
+        etc
+    TACTICAL:
+      cat_id: EQUIPTact
+      labels:
+      - the sound of a tactical
+      - military and police belts, bandoliers, ammo belts
+  EXPLOSIONS:
+    DESIGNED:
+      cat_id: EXPLDsgn
+      labels:
+      - designed and stylized explosion sound effects
+      - designed or stylized explosions and sweeteners
+    MISC:
+      cat_id: EXPLMisc
+      labels:
+      - the sound of explosions
+    REAL:
+      cat_id: EXPLReal
+      labels:
+      - real recorded explosion sounds
+      - real explosion recordings, realistic explosions, not overly stylized
+  FARTS:
+    DESIGNED:
+      cat_id: FARTDsgn
+      labels:
+      - the sound of farts designed
+      - fake or designed farts, whoopie cushion, flarp, mouth farts
+    MISC:
+      cat_id: FARTMisc
+      labels:
+      - the sound of farts
+    REAL:
+      cat_id: FARTReal
+      labels:
+      - the sound of farts real
+      - real recordings of farts
+  FIGHT:
+    BODYFALL:
+      cat_id: FGHTBf
+      labels:
+      - the sound of a bodyfall
+      - bodyfalls, but probably also body scuffles on ground, from simple to complex
+    CLOTH:
+      cat_id: FGHTClth
+      labels:
+      - the sound of fight cloth
+      - active or big scuffling cloth, big fight cloth movement
+    GRAB:
+      cat_id: FGHTGrab
+      labels:
+      - the sound of a grab
+      - big arm grabs, hand or arm blocks as well as they're similar sounds, grappling
+        during wrestling or martial arts
+    IMPACT:
+      cat_id: FGHTImpt
+      labels:
+      - the sound of fighting impact
+      - fight impacts, blocks, kicks and punches
+    MISC:
+      cat_id: FGHTMisc
+      labels:
+      - the sound of fight
+  FIRE:
+    BURNING:
+      cat_id: FIREBurn
+      labels:
+      - the sound of a burning
+      - covers normal fire burning, mostly roars, not isolate fire crackle, which
+        have their own category
+    BURST:
+      cat_id: FIREBrst
+      labels:
+      - the sound of fire burst
+      - a sharp and loud release of fire, covers fire bursts, big flare ups
+    CRACKLE:
+      cat_id: FIRECrkl
+      labels:
+      - the sound of a crackle
+      - specifically crackly fire elements, isolated crackle, or a very crackly fire,
+        good for layering to other fire
+    GAS:
+      cat_id: FIREGas
+      labels:
+      - the sound of gas
+      - gas burners as you'd find in a kitchen stove or gas grill
+    IGNITE:
+      cat_id: FIREIgn
+      labels:
+      - the sound of an ignite
+      - fire ignites, including matches, lighters
+    MISC:
+      cat_id: FIREMisc
+      labels:
+      - the sound of fire
+    SIZZLE:
+      cat_id: FIRESizz
+      labels:
+      - the sound of fire sizzle
+      - glowing red pokers, fuses, coal embers when extinguished, sauna rocks when
+        water is poured on them
+    TORCH:
+      cat_id: FIRETrch
+      labels:
+      - the sound of a torch
+      - constant torches and torch movement, that phasey fire sound as a torch is
+        moved around
+    TURBULENT:
+      cat_id: FIRETurb
+      labels:
+      - turbulent and violent fire sounds
+      - wildly whooshing turbulent violent fire
+    WHOOSH:
+      cat_id: FIREWhsh
+      labels:
+      - a whooshing fireball or fire event sound
+      - big whooshy fire events like a fireball through the air
+  FIREWORKS:
+    COMMERCIAL:
+      cat_id: FRWKComr
+      labels:
+      - the sound of a commercial
+      - large commercial fireworks, mortars, as on the 4th of july
+    MISC:
+      cat_id: FRWKMisc
+      labels:
+      - the sound of fireworks
+    RECREATIONAL:
+      cat_id: FRWKRec
+      labels:
+      - the sound of a recreational
+      - small store-bought, recreational fireworks, firecrackers and roman candles
+        and bottle rockets
+  FOLEY:
+    CLOTH:
+      cat_id: FOLYClth
+      labels:
+      - the sound of foley cloth movement
+      - foley cloth movement — fabric rustling and clothing sounds performed to picture
+    FEET:
+      cat_id: FOLYFeet
+      labels:
+      - foley footstep sounds performed to picture
+      - foley footsteps — shoes and feet on various surfaces performed to picture
+    HANDS:
+      cat_id: FOLYHand
+      labels:
+      - foley hand and prop handling sounds
+      - foley hand and finger sounds — touches, taps, and prop handling performed
+        to picture
+    MISC:
+      cat_id: FOLYMisc
+      labels:
+      - the sound of foley
+      - miscellaneous foley sounds performed to picture
+    PROP:
+      cat_id: FOLYProp
+      labels:
+      - foley prop handling sounds
+      - foley prop sounds — picking up, setting down, and manipulating objects to
+        picture
+  FOOD & DRINK:
+    COOKING:
+      cat_id: FOODCook
+      labels:
+      - food & drink cooking
+      - things overtly related to cooking, baking, preparation, chopping
+    DRINKING:
+      cat_id: FOODDrnk
+      labels:
+      - food & drink drinking
+      - specifically drinking, would also cover animals drinking, dogs lapping water,
+        a horse drinking
+    EATING:
+      cat_id: FOODEat
+      labels:
+      - food & drink eating
+      - specifically eating, would also cover animals eating, a dog eating or a horse
+        eating
+    GLASSWARE:
+      cat_id: FOODGware
+      labels:
+      - food & drink glassware
+      - glass and bottle movement, specifically at a restaurant or bar
+    INGREDIENTS:
+      cat_id: FOODIngr
+      labels:
+      - food & drink ingredients
+      - nuts, seeds, grains, things like that
+    KITCHENWARE:
+      cat_id: FOODKware
+      labels:
+      - food & drink kitchenware
+      - pots and pans movement, big metal bowls, prep bowls
+    MISC:
+      cat_id: FOODMisc
+      labels:
+      - food & drink misc
+      - food and drink sounds
+    POUR:
+      cat_id: FOODPour
+      labels:
+      - food & drink pour
+      - pouring liquid, water, beer, wine, champagne, etc
+    TABLEWARE:
+      cat_id: FOODTware
+      labels:
+      - food & drink tableware
+      - silverware and/or plate movement, in a restaurant or dinner at home
+  FOOTSTEPS:
+    ANIMAL:
+      cat_id: FEETAnml
+      labels:
+      - animal footstep sounds
+      - individual animal footsteps, dog, elephant
+    CREATURE:
+      cat_id: FEETCrea
+      labels:
+      - creature footstep sounds
+      - monster feet, put dinosaur feet in here too, but also for small fantasy creatures
+    HORSE:
+      cat_id: FEETHors
+      labels:
+      - the sound of a horse
+      - all manner of horse feet, from single to running
+    HUMAN:
+      cat_id: FEETHmn
+      labels:
+      - human footstep sounds
+      - human feet, any surface, barefoot, shoes, it all goes here
+    MISC:
+      cat_id: FEETMisc
+      labels:
+      - the sound of footsteps
+  GAMES:
+    ARCADE:
+      cat_id: GAMEArcd
+      labels:
+      - the sound of an arcade
+      - not for arcade ambience, which would go under ambience-amusment, but for specific
+        pinball machines, upright video games, games of skill like skeeball
+    BOARD:
+      cat_id: GAMEBoard
+      labels:
+      - the sound of a board
+      - board games with pieces, think monopoly, risk, chess, checkers
+    CASINO:
+      cat_id: GAMECas
+      labels:
+      - the sound of a casino
+      - casino slot machines, keno machines, roulette, craps
+    MISC:
+      cat_id: GAMEMisc
+      labels:
+      - the sound of games
+    VIDEO:
+      cat_id: GAMEVideo
+      labels:
+      - the sound of a video
+      - console video games from atari to ps5, designed fake video games for consoles
+        like playstation
+  GEOTHERMAL:
+    FUMAROLE:
+      cat_id: GEOFuma
+      labels:
+      - the sound of a fumarole
+    GEYSER:
+      cat_id: GEOGeyser
+      labels:
+      - the sound of a geyser
+      - geysers and eruptions, as you'd find in yellowstone
+    LAVA:
+      cat_id: GEOLava
+      labels:
+      - the sound of a lava
+      - lava flows, crackles, could be some
+    MISC:
+      cat_id: GEOMisc
+      labels:
+      - the sound of geothermal
+    MUD POTS:
+      cat_id: GEOMudpot
+      labels:
+      - the sound of a mud pots
+      - mudpots and paint pots, popping liquidy mud sounds
+  GLASS:
+    BREAK:
+      cat_id: GLASBrk
+      labels:
+      - the sound of glass break
+      - glass singular breaks, so a bottle smash, or a window shatter
+    CRASH & DEBRIS:
+      cat_id: GLASCrsh
+      labels:
+      - glass crash & debris
+      - glass crashes and debris, so multiple items crashing, and isolated glass shards
+        and debris
+    FRICTION:
+      cat_id: GLASFric
+      labels:
+      - the sound of glass friction
+      - glass friction, such as a scrape or squeak
+    HANDLE:
+      cat_id: GLASHndl
+      labels:
+      - the sound of glass handle
+      - glass objects being handled, grabbing a bottle or glass
+    IMPACT:
+      cat_id: GLASImpt
+      labels:
+      - the sound of glass impact
+      - glass impacts without breaking, so a bottle hit that doesn't break, a bottle
+        dropping to the ground but not breaking
+    MISC:
+      cat_id: GLASMisc
+      labels:
+      - the sound of glass
+    MOVEMENT:
+      cat_id: GLASMvmt
+      labels:
+      - the sound of glass movement
+      - glass movement, such as a case of bottles rattling, or a bottle rolling on
+        the floor
+    TONAL:
+      cat_id: GLASTonl
+      labels:
+      - the sound of glass tonal
+      - glass tonal sounds, like bowed blass, a glass harmonica, or a bowed crystal
+        bowl
+  GORE:
+    BLOOD:
+      cat_id: GOREBlood
+      labels:
+      - the sound of a blood
+      - gore blood sounds, dripping and flowing
+    BONE:
+      cat_id: GOREBone
+      labels:
+      - the sound of a bone
+      - gore bones, bones crunching, snapping, break
+    BURN:
+      cat_id: GOREBurn
+      labels:
+      - the sound of a burn
+      - gore flesh sizzling, possible
+    FLESH:
+      cat_id: GOREFlsh
+      labels:
+      - the sound of a flesh
+      - gore flesh tearing, ripping, peeling
+    MISC:
+      cat_id: GOREMisc
+      labels:
+      - the sound of gore
+    OOZE:
+      cat_id: GOREOoze
+      labels:
+      - the sound of an ooze
+      - gore gross oozing liquid, open wounds, possible
+    SOURCE:
+      cat_id: GORESrce
+      labels:
+      - gore audio source
+      - recordings meant as source for gore sounds, smashing a watermelon, stabbing
+        a pumpkin, etc
+    SPLAT:
+      cat_id: GORESplt
+      labels:
+      - the sound of a splat
+      - gore splats, gross splats of gooey stuff
+    SQUISH:
+      cat_id: GORESqsh
+      labels:
+      - the sound of a squish
+      - gore squishes, disgusting squishes or flesh and organs
+    STAB:
+      cat_id: GOREStab
+      labels:
+      - the sound of gore stab
+      - gore sharp stabs and sword pulls
+  GUNS:
+    ANTIQUE:
+      cat_id: GUNAntq
+      labels:
+      - an antique firearm
+      - old black powder weapons, muskets
+    ARTILLERY:
+      cat_id: GUNArtl
+      labels:
+      - the sound of an artillery
+      - modern big guns, guns that launch shells
+    AUTOMATIC:
+      cat_id: GUNAuto
+      labels:
+      - the sound of an automatic
+      - fully automatic capable weapons, even when firing singly
+    CANNON:
+      cat_id: GUNCano
+      labels:
+      - the sound of a cannon
+      - pirate and civil war cannons, for modern artillery see guns-artillery
+    HANDLE:
+      cat_id: GUNHndl
+      labels:
+      - the sound of gun handle
+      - alongside gun-mechanism, but specifically gun handling, grabs, holstering,
+        dropping, catching
+    HITECH:
+      cat_id: GUNTech
+      labels:
+      - a hi-tech or sci-fi weapon
+      - not quite a sci-fi laser gun, but something more advanced than a normal gun,
+        a rail gun for example
+    MECHANISM:
+      cat_id: GUNMech
+      labels:
+      - gun mechanism sounds
+      - gun various mechanical sounds, clips, cocking, bolt slides
+    MISC:
+      cat_id: GUNMisc
+      labels:
+      - the sound of guns
+    PISTOL:
+      cat_id: GUNPis
+      labels:
+      - the sound of a pistol
+      - handguns and pistols
+    RIFLE:
+      cat_id: GUNRif
+      labels:
+      - the sound of a rifle
+      - rifles, single shot and semi-automatic
+    SHOTGUN:
+      cat_id: GUNShotg
+      labels:
+      - the sound of a shotgun
+      - shotguns, single, dual, pump
+    SUPPRESSED:
+      cat_id: GUNSupr
+      labels:
+      - the sound of a suppressed
+  HORNS:
+    AIR POWERED:
+      cat_id: HORNAir
+      labels:
+      - the sound of an air powered
+      - air horns, as in handheld compressed air horns, huge factory air horns
+    CELEBRATION:
+      cat_id: HORNCele
+      labels:
+      - horns being played in celebration
+      - party horns, from small party horns to vuvuzelas
+    MISC:
+      cat_id: HORNMisc
+      labels:
+      - the sound of horns
+    TRADITIONAL:
+      cat_id: HORNTrad
+      labels:
+      - the sound of a traditional
+      - rams horns, conches, alpine horns, old traditional horns, medieval battle
+        horns
+  HUMAN:
+    BLOW:
+      cat_id: HMNBlow
+      labels:
+      - the sound of a blow
+      - blowing air, blowing up a balloon, blowing out candles, etc
+    BREATH:
+      cat_id: HMNBrth
+      labels:
+      - the sound of a breath
+      - breathing, normal to heavy, big inhales, sighs
+    BURP:
+      cat_id: HMNBurp
+      labels:
+      - the sound of a burp
+    COUGH:
+      cat_id: HMNCough
+      labels:
+      - the sound of a cough
+      - human coughs and coughing
+    HEARTBEAT:
+      cat_id: HMNHart
+      labels:
+      - the sound of a heartbeat
+      - heartbeats, both literal as in a dr
+    KISS:
+      cat_id: HMNKiss
+      labels:
+      - the sound of kiss
+    MISC:
+      cat_id: HMNMisc
+      labels:
+      - the sound of human
+    PEE:
+      cat_id: HMNPee
+      labels:
+      - the sound of a pee
+    SKIN:
+      cat_id: HMNSkin
+      labels:
+      - the sound of a skin
+      - human skin, scratching, handshakes, skin on skin action, back rubbing, etc
+    SNEEZE:
+      cat_id: HMNSneez
+      labels:
+      - the sound of a sneeze
+    SNIFF:
+      cat_id: HMNSniff
+      labels:
+      - the sound of a sniff
+    SNORE:
+      cat_id: HMNSnor
+      labels:
+      - the sound of a snore
+    SPIT:
+      cat_id: HMNSpit
+      labels:
+      - the sound of a spit
+    VOMIT:
+      cat_id: HMNVomit
+      labels:
+      - the sound of a vomit
+  ICE:
+    BREAK:
+      cat_id: ICEBrk
+      labels:
+      - the sound of icy break
+      - ice cracks, breaks, shatters
+    CRASH & DEBRIS:
+      cat_id: ICECrsh
+      labels:
+      - ice crash & debris
+      - ice large crashes and isolated debris go here
+    FRICTION:
+      cat_id: ICEFric
+      labels:
+      - the sound of icy friction
+      - dry ice may go here, but often it's a metallic sound too, but ice scrapes,
+        squeaks, creaks
+    HANDLE:
+      cat_id: ICEHndl
+      labels:
+      - the sound of icy handle
+      - ice handling, picking up ice
+    IMPACT:
+      cat_id: ICEImpt
+      labels:
+      - the sound of icy impact
+      - pieces of ice dropping (without breaking)
+    MISC:
+      cat_id: ICEMisc
+      labels:
+      - the sound of ice
+    MOVEMENT:
+      cat_id: ICEMvmt
+      labels:
+      - the sound of icy movement
+      - ice sliding or rattling, maybe an object sliding across ice
+    TONAL:
+      cat_id: ICETonl
+      labels:
+      - the sound of icy tonal
+      - tonal ice sounds, probably fairly rare, but that ice ping on a frozen lake
+        would be one example
+  LASERS:
+    BEAM:
+      cat_id: LASRBeam
+      labels:
+      - the sound of a beam
+      - steady laser beams, not a laser gun
+    GUN:
+      cat_id: LASRGun
+      labels:
+      - the sound of a gun
+      - classic laser guns, blasters, laser cannons
+    IMPACT:
+      cat_id: LASRImpt
+      labels:
+      - the sound of laser impact
+      - classic laser impact sounds, from blaster hits
+    MISC:
+      cat_id: LASRMisc
+      labels:
+      - the sound of lasers
+  LEATHER:
+    CREAK:
+      cat_id: LETHRCreak
+      labels:
+      - the sound of leather creak
+      - leather creaks, jacket and bag creaks, saddle movements
+    HANDLE:
+      cat_id: LETHRHndl
+      labels:
+      - the sound of leather handle
+      - leather handling, picking up a leather bag, putting on a leather jacket maybe
+    IMPACT:
+      cat_id: LETHRImpt
+      labels:
+      - the sound of leather impact
+      - hits and impacts of leather, leather bag or saddle dropping
+    MISC:
+      cat_id: LETHRMisc
+      labels:
+      - the sound of leather
+    MOVEMENT:
+      cat_id: LETHRMvmt
+      labels:
+      - the sound of leather movement
+      - movement of leather, definitely
+  LIQUID & MUD:
+    BUBBLES:
+      cat_id: LIQBubl
+      labels:
+      - liquid & mud bubbles
+      - mud and thicker than water, thick bubbles, viscous liquid
+    IMPACT:
+      cat_id: LIQImpt
+      labels:
+      - liquid & mud impact
+      - mud and thicker than water, splats and hit
+    MISC:
+      cat_id: LIQMisc
+      labels:
+      - liquid & mud misc
+      - mud and thicker than water sounds
+    MOVEMENT:
+      cat_id: LIQMvmt
+      labels:
+      - liquid & mud movement
+      - mud and thicker than water, oozing, slime, glooping
+    SUCTION:
+      cat_id: LIQSuct
+      labels:
+      - liquid & mud suction
+      - thicker than water, disgusting liquidy suction, plunger sucks
+  MACHINES:
+    AMUSEMENT:
+      cat_id: MACHAmus
+      labels:
+      - amusement ride and theme park machine sounds
+      - theme park rides such as rollercoasters and carnival rides
+    ANTIQUE:
+      cat_id: MACHAntq
+      labels:
+      - antique machinery sounds
+      - old mechanical sewing machines, ancient looms, olive presses, a bit ambiguous
+        but a very old mechanical machine
+    APPLIANCE:
+      cat_id: MACHAppl
+      labels:
+      - home appliance sounds
+      - general appliances, refrigerator, stove, oven, vacuum cleaner
+    CONSTRUCTION:
+      cat_id: MACHCnst
+      labels:
+      - construction machinery sounds
+      - a machine for construction that isn't a vehicle or a tool
+    ELEVATOR:
+      cat_id: MACHElev
+      labels:
+      - the sound of an elevator
+      - elevator movement and doors would go here
+    ESCALATOR:
+      cat_id: MACHEscl
+      labels:
+      - the sound of an escalator
+      - escalators and moving walkways would go here
+    FAN:
+      cat_id: MACHFan
+      labels:
+      - the sound of a fan
+      - fans of all types, box fans, ceiling fans
+    GARDEN:
+      cat_id: MACHGrdn
+      labels:
+      - the sound of machine garden
+      - powered landscaping machines, lawnmowers, weed-whackers, edgers, hedge trimmers
+    GYM:
+      cat_id: MACHGym
+      labels:
+      - the sound of machine gym
+      - exercise bikes, weight machines, treadmill, all things fitness
+    HITECH:
+      cat_id: MACHTech
+      labels:
+      - hi-tech machinery sounds
+      - think cool james bond machines, big elaborate death traps, maybe rube goldberg
+        type machines
+    HVAC:
+      cat_id: MACHHvac
+      labels:
+      - the sound of a hvac
+    INDUSTRIAL:
+      cat_id: MACHInd
+      labels:
+      - industrial machinery sounds
+      - big industrial presses, factory machines, industrial robots, any heavy manufacturing
+        machines
+    MECHANISM:
+      cat_id: MACHMech
+      labels:
+      - the sound of a mechanism
+      - complex mechanical smaller machines and gadgets, puzzle boxes that open portals
+        to hell
+    MEDICAL:
+      cat_id: MACHMed
+      labels:
+      - medical machine sounds
+      - machines typically found in a hospital, medical lab or doctor's office
+    MISC:
+      cat_id: MACHMisc
+      labels:
+      - the sound of machines
+    OFFICE:
+      cat_id: MACHOffc
+      labels:
+      - the sound of an office
+      - machines typically found in an office, such as printers and copy machines
+    PUMP:
+      cat_id: MACHPump
+      labels:
+      - the sound of a pump
+      - air or water pumps, fish tank aquarium pumps, sump pumps
+  MAGIC:
+    ANGELIC:
+      cat_id: MAGAngl
+      labels:
+      - the sound of an angelic
+      - angelic, holy, benevolent magic
+    ELEMENTAL:
+      cat_id: MAGElem
+      labels:
+      - elemental magic sounds
+      - magic centered around elements, fire, water, ice
+    EVIL:
+      cat_id: MAGEvil
+      labels:
+      - the sound of an evil
+      - evil magic, ominous, dark magic
+    MISC:
+      cat_id: MAGMisc
+      labels:
+      - the sound of magic
+    POOF:
+      cat_id: MAGPoof
+      labels:
+      - the sound of a poof
+      - shorter magic phrases, often for transforming, short 'turn you into a rabbit'
+        type stuff
+    SHIMMER:
+      cat_id: MAGShim
+      labels:
+      - the sound of a shimmer
+      - glassy or chime-like shimmers, waves of particle type magic
+    SPELL:
+      cat_id: MAGSpel
+      labels:
+      - the sound of a spell
+      - something complex for a spell being cast
+  MECHANICAL:
+    CLICK:
+      cat_id: MECHClik
+      labels:
+      - the sound of a click
+      - short clicks, could be from button presses, things like that
+    GEARS:
+      cat_id: MECHGear
+      labels:
+      - the sound of gears
+      - a toothed cog, turning or grinding gears, complex gear mechanisms
+    HYDRAULIC & PNEUMATIC:
+      cat_id: MECHHydr
+      labels:
+      - mechanical hydraulic & pneumatic
+      - various hydraulic or pneumatic sounds, like on a self-closing door
+    LATCH:
+      cat_id: MECHLtch
+      labels:
+      - the sound of a latch
+      - latch, as in a briefcase latch, or a luggage latch
+    LEVER:
+      cat_id: MECHLvr
+      labels:
+      - the sound of a lever
+      - a sliding or switching lever
+    LOCK:
+      cat_id: MECHLock
+      labels:
+      - the sound of a lock
+      - a padlock, bicycle lock, or a locking mechanism
+    MISC:
+      cat_id: MECHMisc
+      labels:
+      - the sound of mechanical
+    PULLEY:
+      cat_id: MECHPuly
+      labels:
+      - the sound of a pulley
+      - an isolated recording of a pulley, or system of pulleys
+    RATCHET:
+      cat_id: MECHRtch
+      labels:
+      - the sound of a ratchet
+      - that sound a ratchet makes
+    RELAY:
+      cat_id: MECHRelay
+      labels:
+      - the sound of a relay
+      - old train station counting board flipping
+    ROLLER:
+      cat_id: MECHRolr
+      labels:
+      - the sound of a roller
+      - like a rolling conveyor belt, or something on a roller
+    SWITCH:
+      cat_id: MECHSwtch
+      labels:
+      - the sound of a switch
+      - basic and heavy switches, light switches, power switches
+  METAL:
+    BREAK:
+      cat_id: METLBrk
+      labels:
+      - the sound of metallic break
+      - metal breaking, snaps, cracks, rips, shatters
+    CRASH & DEBRIS:
+      cat_id: METLCrsh
+      labels:
+      - metal crash & debris
+      - metal crashing and debris
+    FRICTION:
+      cat_id: METLFric
+      labels:
+      - the sound of metallic friction
+      - metal friction, stress, so scrapes, creaks, squeaks, squeals, screeches
+    HANDLE:
+      cat_id: METLHndl
+      labels:
+      - the sound of metallic handle
+      - metal handling, handling metal objects
+    IMPACT:
+      cat_id: METLImpt
+      labels:
+      - the sound of metallic impact
+      - metal single item impacts, so anvil hits, dropping something that doesn't
+        break
+    MISC:
+      cat_id: METLMisc
+      labels:
+      - the sound of metal
+    MOVEMENT:
+      cat_id: METLMvmt
+      labels:
+      - the sound of metallic movement
+      - metal movement, so drag, roll, rattle, shake
+    TONAL:
+      cat_id: METLTonl
+      labels:
+      - tonal metallic ringing sounds
+      - metal tonal, resonating, ringing, wronks and warps
+  MOTORS:
+    ANTIQUE:
+      cat_id: MOTRAntq
+      labels:
+      - antique motor sounds
+      - old motors, usually combustion, so old oil pump engines, old compressors
+    COMBUSTION:
+      cat_id: MOTRComb
+      labels:
+      - the sound of a combustion
+    ELECTRIC:
+      cat_id: MOTRElec
+      labels:
+      - the sound of an electric
+    MISC:
+      cat_id: MOTRMisc
+      labels:
+      - the sound of motors
+    SERVO:
+      cat_id: MOTRSrvo
+      labels:
+      - the sound of a servo
+      - specifically servo motors, from robot, to radio controlled servos
+    TURBINE:
+      cat_id: MOTRTurb
+      labels:
+      - the sound of a turbine
+      - turbines, water or air
+  MOVEMENT:
+    ACTIVITY:
+      cat_id: MOVEActv
+      labels:
+      - the sound of an activity
+      - crowds moving but also performing activities, cleaning, moving boxes
+    ANIMAL:
+      cat_id: MOVEAnml
+      labels:
+      - the sound of an animal
+      - group animal movement, individual feet go to footsteps-animal or footsteps-horse
+    CREATURE:
+      cat_id: MOVECrea
+      labels:
+      - creature movement sounds
+      - slithering dragons, gooey zombie movement
+    CROWD:
+      cat_id: MOVECrwd
+      labels:
+      - a group of people milling or walking
+      - groups of people milling or walking
+    HUMAN:
+      cat_id: MOVEHmn
+      labels:
+      - human movement sounds
+      - movement of single human, aside from footsteps, standing, sitting, shuffe
+    INSECT:
+      cat_id: MOVEInsc
+      labels:
+      - insect movement sounds
+      - group insects, footsteps, movement, swarms, spiders, locusts
+    MISC:
+      cat_id: MOVEMisc
+      labels:
+      - the sound of movement
+    PRESENCE:
+      cat_id: MOVEPres
+      labels:
+      - the sound of a presence
+      - very light movement, people in church adjusting, people on church pews
+  MUSICAL:
+    BELLS:
+      cat_id: MUSCBell
+      labels:
+      - the sound of bells
+      - specifically musical bells, tuned bells, think tubular bells or hand bells
+    BRASS:
+      cat_id: MUSCBrass
+      labels:
+      - the sound of brass
+      - brass musical instruments, trumpets, tuba, french horn
+    CHIME:
+      cat_id: MUSCChim
+      labels:
+      - the sound of a chime
+      - wind chimes, bell trees, tinkerbell type magic chimes
+    CHORAL:
+      cat_id: MUSCChor
+      labels:
+      - the sound of a choral
+      - choir pieces, choral, not for 'designed type vocally stuff'
+    EXPERIMENTAL:
+      cat_id: MUSCExpr
+      labels:
+      - the sound of an experimental
+      - strange or wierdly modified instruments, exotic instruments, prepared instruments
+        like a prepared piano
+    INSTRUMENT:
+      cat_id: MUSCInst
+      labels:
+      - the sound of an instrument
+      - various instruments that don't have a home in the other musical categories
+    KEYED:
+      cat_id: MUSCKeyd
+      labels:
+      - the sound of a keyed
+      - keyed instruments, such as pianos and harpsichord
+    LOOP:
+      cat_id: MUSCLoop
+      labels:
+      - the sound of a loop
+      - for looping musical phrases, sampled loops
+    MISC:
+      cat_id: MUSCMisc
+      labels:
+      - the sound of musical
+    PERCUSSION:
+      cat_id: MUSCPerc
+      labels:
+      - the sound of a percussion
+      - drums and percussion, including deep timpani or big war drums
+    PERCUSSION TUNED:
+      cat_id: MUSCTnprc
+      labels:
+      - the sound of a percussion tuned
+      - tuned percussion mostly played with mallets, xylophones, vibraphones, etc
+    PERFORMANCE:
+      cat_id: MUSCPrfm
+      labels:
+      - the sound of a performance
+      - a musical performance, or warm-up, a live musical act, a street musican, high
+        school band
+    PLUCKED:
+      cat_id: MUSCPluck
+      labels:
+      - the sound of a plucked
+      - guitars, banjos, harps, instruments that are mainly plucked when played
+    SAMPLE:
+      cat_id: MUSCSmpl
+      labels:
+      - the sound of a sample
+    SHAKEN:
+      cat_id: MUSCShake
+      labels:
+      - the sound of a shaken
+      - shaken musical instruments, rattles, tamourines
+    SONG & PHRASE:
+      cat_id: MUSCSong
+      labels:
+      - musical song & phrase
+      - complete musical pieces, songs as ringtones, car music bys
+    STINGER:
+      cat_id: MUSCStngr
+      labels:
+      - the sound of a stinger
+      - a short musical phrase or accent, like a horror 'string' sting
+    STRINGED:
+      cat_id: MUSCStr
+      labels:
+      - the sound of a stringed
+      - bowed string instruments like violin, cello, viola
+    SYNTHESIZED:
+      cat_id: MUSCSynth
+      labels:
+      - the sound of a synthesized
+      - synth samples, musical synth performances
+    TOY:
+      cat_id: MUSCToy
+      labels:
+      - the sound of a toy
+      - toys that play musical phrases, also music boxes would go here
+    WOODWIND:
+      cat_id: MUSCWind
+      labels:
+      - the sound of a woodwind
+      - woodwind instruments like flute, oboe, bassoon, clarinet
+  NATURAL DISASTER:
+    AVALANCHE:
+      cat_id: NATDAval
+      labels:
+      - the sound of an avalanche
+      - composite big movements of sliding, falling earth, landslides, mudslides
+    EARTHQUAKE:
+      cat_id: NATDQuak
+      labels:
+      - the sound of an earthquake
+      - composite and complex earthquake rumbles and rattles
+    MISC:
+      cat_id: NATDMisc
+      labels:
+      - the sound of natural disaster
+    TORNADO:
+      cat_id: NATDTorn
+      labels:
+      - the sound of a tornado
+      - composite tornado sounds, layered and created massive tornadoes
+    TSUNAMI:
+      cat_id: NATDTsun
+      labels:
+      - the sound of a tsunami
+      - composite tidal wave or tsunami scenes, layered and created
+    TYPHOON:
+      cat_id: NATDThyp
+      labels:
+      - the sound of a typhoon
+      - composite typhoons, cyclones or hurricanes
+    VOLCANO:
+      cat_id: NATDVolc
+      labels:
+      - the sound of a volcano
+      - composite big volcano eruptions
+  OBJECTS:
+    BAG:
+      cat_id: OBJBag
+      labels:
+      - the sound of a bag
+      - bags and purses, shopping bags, lunch bags
+    BOOK:
+      cat_id: OBJBook
+      labels:
+      - the sound of a book
+      - books, magazines, sounds relating to these
+    COIN:
+      cat_id: OBJCoin
+      labels:
+      - the sound of a coin
+      - coins land, toss, drop, handle
+    CONTAINER:
+      cat_id: OBJCont
+      labels:
+      - the sound of a container
+      - boxes, tupperware, jewelry boxes, things that hold things, lids, handling,
+        opens and closes
+    FASHION:
+      cat_id: OBJFash
+      labels:
+      - the sound of a fashion
+      - shoes, belts, clothes, actions involding fashion objects
+    FURNITURE:
+      cat_id: OBJFurn
+      labels:
+      - the sound of a furniture
+      - chairs movement, couch movement, things like that
+    GARDEN:
+      cat_id: OBJGrdn
+      labels:
+      - the sound of object garden
+      - flower pots, bird feeders, things that you might find and use in a garden
+    GYM:
+      cat_id: OBJGym
+      labels:
+      - the sound of object gym
+      - objects found in a fitness center or school gym, maybe a yoga mat, dumbells
+    HOUSEHOLD:
+      cat_id: OBJHsehld
+      labels:
+      - the sound of a household
+      - cleaning products, hangers, towel racks, things around the house that don't
+        fit somewhere else
+    JEWELRY:
+      cat_id: OBJJewl
+      labels:
+      - the sound of a jewelry
+    KEYS:
+      cat_id: OBJKey
+      labels:
+      - the sound of keys
+      - keys jingling, keys movement in lock
+    LUGGAGE:
+      cat_id: OBJLug
+      labels:
+      - the sound of a luggage
+      - suitcases, luggage related sounds, handling, opening, packing
+    MEDICAL:
+      cat_id: OBJMed
+      labels:
+      - medical equipment and object sounds
+      - common objects in hospital or medical office
+    MISC:
+      cat_id: OBJMisc
+      labels:
+      - the sound of objects
+    OFFICE:
+      cat_id: OBJOffc
+      labels:
+      - the sound of an office
+      - things found in an office, staplers, paper cutter etc
+    PACKAGING:
+      cat_id: OBJPack
+      labels:
+      - the sound of a packaging
+      - items commonly used in packaging or packing, so bubblewrap, styrofoam, labels,
+        food packaging
+    TAPE:
+      cat_id: OBJTape
+      labels:
+      - the sound of a tape
+      - tape and other tacky sticky type sounds as well
+    UMBRELLA:
+      cat_id: OBJUmbr
+      labels:
+      - the sound of an umbrella
+      - umbrella opens and closes
+    WHEELED:
+      cat_id: OBJWhled
+      labels:
+      - the sound of a wheeled
+      - non-motorized wheeled carts and dollies
+    WRITING:
+      cat_id: OBJWrite
+      labels:
+      - the sound of a writing
+      - any writing object or performance of writing on any surface
+    ZIPPER:
+      cat_id: OBJZipr
+      labels:
+      - the sound of a zipper
+      - pant zippers, bag zippers, luggage zippers
+  PAPER:
+    FLUTTER:
+      cat_id: PAPRFltr
+      labels:
+      - paper fluttering through the air
+      - paper and cardboard fluttering or flapping through the air
+    FRICTION:
+      cat_id: PAPRFric
+      labels:
+      - paper rubbing and friction sounds
+      - paper and cardboard rubbing and sliding sounds
+    HANDLE:
+      cat_id: PAPRHndl
+      labels:
+      - paper handling, folding, and shuffling
+      - paper and cardboard handling — picking up, folding, shuffling
+    IMPACT:
+      cat_id: PAPRImpt
+      labels:
+      - paper being struck or impacted
+      - paper and cardboard being hit, slapped, or stamped
+    MISC:
+      cat_id: PAPRMisc
+      labels:
+      - the sound of paper
+      - miscellaneous paper and cardboard sounds
+    RIP:
+      cat_id: PAPRRip
+      labels:
+      - paper and cardboard being ripped or torn
+      - paper and cardboard being torn, ripped, or shredded
+    TONAL:
+      cat_id: PAPRTonl
+      labels:
+      - paper producing tonal or pitched resonant sounds
+      - paper and cardboard producing tonal or resonant sounds
+  PLASTIC:
+    BREAK:
+      cat_id: PLASBrk
+      labels:
+      - the sound of plastic break
+      - plastic breaking, crunches, rips, shatters
+    CRASH & DEBRIS:
+      cat_id: PLASCrsh
+      labels:
+      - plastic crash & debris
+      - plastic crashing, groups items falling, group destruction, plastic debris
+    FRICTION:
+      cat_id: PLASFric
+      labels:
+      - the sound of plastic friction
+      - plastic friction, such as scrapes, creaks, squeaks, screeching
+    HANDLE:
+      cat_id: PLASHndl
+      labels:
+      - the sound of plastic handle
+      - plastic handling, handling a toy or remote control
+    IMPACT:
+      cat_id: PLASImpt
+      labels:
+      - the sound of plastic impact
+    MISC:
+      cat_id: PLASMisc
+      labels:
+      - the sound of plastic
+    MOVEMENT:
+      cat_id: PLASMvmt
+      labels:
+      - the sound of plastic movement
+      - plastic movement, dragging plastic or drag on plastic, rattles, shakes
+    TONAL:
+      cat_id: PLASTonl
+      labels:
+      - the sound of plastic tonal
+      - plastic tonal sounds, with a musical quality
+  RAIN:
+    CLOTH:
+      cat_id: RAINClth
+      labels:
+      - rain falling on cloth or fabric
+      - rain on cloth, like a person's clothes, or more likely a patio umbrella, awning
+    CONCRETE:
+      cat_id: RAINConc
+      labels:
+      - rain falling on concrete or asphalt
+      - rain on asphalt or concrete or patio tile
+    GENERAL:
+      cat_id: RAIN
+      labels:
+      - the sound of general rainfall
+      - general downpour, rain on mixed materials
+    GLASS:
+      cat_id: RAINGlas
+      labels:
+      - rain falling on glass
+      - rain on a glass roof like a sunroof, or rain blown against a window as well
+    INTERIOR:
+      cat_id: RAINInt
+      labels:
+      - rain heard from indoors
+      - interior recordings of rain, from inside house or barn, or vehicle
+    METAL:
+      cat_id: RAINMetl
+      labels:
+      - rain falling on metal
+      - rain on a metal surface, so exterior rain on a car, or metal sheet, metal
+        roof
+    PLASTIC:
+      cat_id: RAINPlas
+      labels:
+      - rain falling on plastic
+      - rain on plastic or vinyl surfaces, like a grill cover, or a plastic shed
+    VEGETATION:
+      cat_id: RAINVege
+      labels:
+      - rain falling on leaves and vegetation
+      - rain on plants, leaves and grass
+    WATER:
+      cat_id: RAINWatr
+      labels:
+      - rain falling onto water
+      - rain on water, puddles, lakes, ponds
+    WOOD:
+      cat_id: RAINWood
+      labels:
+      - rain falling on wood
+      - rain on wood surfaces, so a deck for example
+  ROBOTS:
+    MISC:
+      cat_id: ROBTMisc
+      labels:
+      - the sound of robots
+    MOVEMENT:
+      cat_id: ROBTMvmt
+      labels:
+      - the sound of robotic movement
+      - complex robot movement, servos, possible robot hovering and flying
+    VOCAL:
+      cat_id: ROBTVox
+      labels:
+      - a robotic voice or vocal synthesis
+      - droid and robot vocals, r2d2 would go here
+  ROCKS:
+    BREAK:
+      cat_id: ROCKBrk
+      labels:
+      - the sound of rocky break
+      - rock cracks, breaks, rips or shatters
+    CRASH & DEBRIS:
+      cat_id: ROCKCrsh
+      labels:
+      - rocks crash & debris
+      - rock crashes and debris, so a huge rock crash, collapse
+    FRICTION:
+      cat_id: ROCKFric
+      labels:
+      - the sound of rocky friction
+    HANDLE:
+      cat_id: ROCKHndl
+      labels:
+      - the sound of rocky handle
+      - rock handing, picking up or digging through rocks, bricks
+    IMPACT:
+      cat_id: ROCKImpt
+      labels:
+      - the sound of rocky impact
+      - rock falling, dropping without breaking, or something hit with a rock, a big
+        rock impact
+    MISC:
+      cat_id: ROCKMisc
+      labels:
+      - the sound of rocks
+    MOVEMENT:
+      cat_id: ROCKMvmt
+      labels:
+      - the sound of rocky movement
+      - rock dragging, or dragging across a rock surface, rocks shaking or rattling
+    TONAL:
+      cat_id: ROCKTonl
+      labels:
+      - the sound of rocky tonal
+      - tonal rocks, probably pretty rare
+  ROPE:
+    CREAK:
+      cat_id: ROPECreak
+      labels:
+      - the sound of rope creak
+      - rope stretches and creaks, people hanging from nooses
+    HANDLE:
+      cat_id: ROPEHndl
+      labels:
+      - the sound of rope handle
+      - rope handling, tying knots, rigging up a ship sail
+    IMPACT:
+      cat_id: ROPEImpt
+      labels:
+      - the sound of rope impact
+      - rope impacts, tossing ropes to ground, ropes banging violently in the wind
+    MISC:
+      cat_id: ROPEMisc
+      labels:
+      - the sound of rope
+    MOVEMENT:
+      cat_id: ROPEMvmt
+      labels:
+      - the sound of rope movement
+      - ropes zuzzing, moving across objects, zipline
+  RUBBER:
+    CRASH & DEBRIS:
+      cat_id: RUBRCrsh
+      labels:
+      - rubber crash & debris
+      - rubber items crashing, or rubber debris landing
+    FRICTION:
+      cat_id: RUBRFric
+      labels:
+      - the sound of rubber friction
+      - rubber squeaks, balloon squeaks, a rubber shoe squeak
+    HANDLE:
+      cat_id: RUBRHndl
+      labels:
+      - the sound of rubber handle
+      - rubber handling, rubber objects being manipulated or handled
+    IMPACT:
+      cat_id: RUBRImpt
+      labels:
+      - the sound of rubber impact
+      - rubber impacts, drops, bounces
+    MISC:
+      cat_id: RUBRMisc
+      labels:
+      - the sound of rubber
+    MOVEMENT:
+      cat_id: RUBRMvmt
+      labels:
+      - the sound of rubber movement
+      - rubber movement, dragging rubber or drag on rubber
+    TONAL:
+      cat_id: RUBRTonl
+      labels:
+      - the sound of rubber tonal
+      - rubber movement with a tonal quality, a musical quality
+  SCIFI:
+    ALARM:
+      cat_id: SCIAlrm
+      labels:
+      - the sound of scifi alarm
+      - overly futuristic alarms, the kind you're hear on a spaceship
+    COMPUTER:
+      cat_id: SCICmpt
+      labels:
+      - the sound of scifi computer
+      - use sci-fi for overtly 'science fiction' type computer sounds, a very futuristic
+        computer
+    DOOR:
+      cat_id: SCIDoor
+      labels:
+      - the sound of scifi door
+      - that star-trek type door
+    ENERGY:
+      cat_id: SCIEnrg
+      labels:
+      - the sound of scifi energy
+      - energy particles, vortexes, transporters, holograms, force fields
+    IMPACT:
+      cat_id: SCIImpt
+      labels:
+      - the sound of scifi impact
+      - a bolt of scifi energy, a hi-tech energy impact, more futuristic than just
+        an explosion
+    MACHINE:
+      cat_id: SCIMach
+      labels:
+      - the sound of scifi machine
+      - future technology machines, transporters, food replicators
+    MECHANISM:
+      cat_id: SCIMech
+      labels:
+      - the sound of scifi mechanism
+      - an overly sci-fi sounding gizmo or mechanism
+    MISC:
+      cat_id: SCIMisc
+      labels:
+      - the sound of scifi
+      - sci-fi sounds
+    RETRO:
+      cat_id: SCIRetro
+      labels:
+      - the sound of scifi retro
+      - cheesy sci-fi sounds, like from the jetsons, the day the earth stood still
+    SPACESHIP:
+      cat_id: SCIShip
+      labels:
+      - the sound of scifi spaceship
+      - spaceships here, your best enterprise and tie fighter rip-offs
+    VEHICLE:
+      cat_id: SCIVeh
+      labels:
+      - the sound of scifi vehicle
+      - various sci-fi vehicles, like a moon rover, landspeeder, speeder bike, hoverboard,
+        podracer
+    WEAPON:
+      cat_id: SCIWeap
+      labels:
+      - the sound of scifi weapon
+      - lightsabers, exotic sci-fi weapons
+  SNOW:
+    CRASH & DEBRIS:
+      cat_id: SNOWCrsh
+      labels:
+      - snow crash & debris
+      - snow big crashes, a big fall of snow, a roof full of snow collapsing
+    FRICTION:
+      cat_id: SNOWFric
+      labels:
+      - the sound of snowy friction
+    HANDLE:
+      cat_id: SNOWHndl
+      labels:
+      - the sound of snowy handle
+      - snow being handled, a snowball being formed, etc
+    IMPACT:
+      cat_id: SNOWImpt
+      labels:
+      - the sound of snowy impact
+      - a big impact of snow, like a roof full of snow falling
+    MISC:
+      cat_id: SNOWMisc
+      labels:
+      - the sound of snow
+    MOVEMENT:
+      cat_id: SNOWMvmt
+      labels:
+      - the sound of snowy movement
+      - dragging something through snow, rolling in snow
+  SPORTS:
+    COURT:
+      cat_id: SPRTCourt
+      labels:
+      - the sound of a court
+      - sports played on a court indoors or out, such a basketball, tennis
+    FIELD:
+      cat_id: SPRTField
+      labels:
+      - the sound of a field
+      - sports played on a field outdoors such as soccer and football
+    GYM:
+      cat_id: SPRTGym
+      labels:
+      - the sound of sports gym
+      - sports played or performed primarily in a gym and/or ring, such as boxing,
+        wrestling, gymnastics
+    INDOOR:
+      cat_id: SPRTIndor
+      labels:
+      - the sound of sports indoor
+      - various indoor sports not able to be categorized elsewhere
+    MISC:
+      cat_id: SPRTMisc
+      labels:
+      - the sound of sports
+    SKATE:
+      cat_id: SPRTSkate
+      labels:
+      - the sound of a skate
+      - wheeled skating sports like skateboarding or roller skating, rollerblading
+    TRACK & FIELD:
+      cat_id: SPRTTrck
+      labels:
+      - sports track & field
+      - track and field sports, as in running, long jump, pole vault
+    WATER:
+      cat_id: SPRTWatr
+      labels:
+      - the sound of a water
+      - sports played in or on water, swimming, diving
+    WINTER:
+      cat_id: SPRTWntr
+      labels:
+      - the sound of a winter
+      - sports on snow or ice such as hockey, ice skating, snowboard and skiing
+  SWOOSHES:
+    SWISH:
+      cat_id: SWSH
+      labels:
+      - the sound of swooshes swish
+      - a swish is smaller than a whoosh
+    WHOOSH:
+      cat_id: WHSH
+      labels:
+      - the sound of swooshes whoosh
+      - a whoosh is larger than a swish
+  TOOLS:
+    GARDEN:
+      cat_id: TOOLGrdn
+      labels:
+      - the sound of tool garden
+      - hand tools used in a garden, rakes, hoes, etc
+    HAND:
+      cat_id: TOOLHand
+      labels:
+      - the sound of a hand
+      - hand tools, not requiring power
+    MISC:
+      cat_id: TOOLMisc
+      labels:
+      - the sound of tools
+    PNEUMATIC:
+      cat_id: TOOLPneu
+      labels:
+      - the sound of a pneumatic
+      - air tools, such as jackhammers, air ratchets, nail guns
+    POWER:
+      cat_id: TOOLPowr
+      labels:
+      - the sound of a power
+      - tools that require power
+  TOYS:
+    ELECTRONIC:
+      cat_id: TOYElec
+      labels:
+      - the sound of an electronic
+      - remote controlled car, slot cars
+    MECHANICAL:
+      cat_id: TOYMech
+      labels:
+      - the sound of a mechanical
+      - wind up robots, things like that
+    MISC:
+      cat_id: TOYMisc
+      labels:
+      - the sound of toys
+  TRAINS:
+    BRAKE:
+      cat_id: TRNBrake
+      labels:
+      - train brakes screeching
+      - screeching metalic train brake wheels, subway brakes
+    CLACK:
+      cat_id: TRNClak
+      labels:
+      - the sound of a clack
+      - train clacks isolated, constant clacking of trains passing or running
+    DOOR:
+      cat_id: TRNDoor
+      labels:
+      - a train door opening or closing
+      - train doors, sliding doors in passenger or freight trains
+    DIESEL:
+      cat_id: TRNDiesl
+      labels:
+      - the sound of a diesel
+      - freight trains, large commercial diesel locomotives
+    ELECTRIC:
+      cat_id: TRNElec
+      labels:
+      - an electric train
+      - commuter trains, elevated trains, light rail, subways have their own category
+    HIGH SPEED:
+      cat_id: TRNHspd
+      labels:
+      - the sound of a high speed
+      - hi-tech trains, maglev, monorails, hyperloops, bullet trains
+    HORN:
+      cat_id: TRNHorn
+      labels:
+      - a train horn
+      - train horns, subway horns
+    INTERIOR:
+      cat_id: TRNInt
+      labels:
+      - interior ambience of a train
+      - interior trains, from diesel to commuter, onboard train sounds
+    MECHANISM:
+      cat_id: TRNMech
+      labels:
+      - mechanical sounds from a train
+      - coupling, decoupling and other mechanical sounds relating to trains
+    MISC:
+      cat_id: TRNMisc
+      labels:
+      - the sound of trains
+    STEAM:
+      cat_id: TRNSteam
+      labels:
+      - a steam train
+      - old steam powered trains, big smoke stack chugs
+    SUBWAY:
+      cat_id: TRNSbwy
+      labels:
+      - the sound of a subway
+      - subways, overtly 'underground' sounding trains, above group city trains probably
+        best in trains-electric
+    TRAM:
+      cat_id: TRNTram
+      labels:
+      - the sound of a tram
+      - trolleys, cable cars trams and streetcars
+  USER INTERFACE:
+    ALERT:
+      cat_id: UIAlert
+      labels:
+      - the sound of an alert
+      - an alert tone or chime or notification
+    BEEP:
+      cat_id: UIBeep
+      labels:
+      - the sound of a beep
+      - interface beeps, beeps while interacting with various technology, phones,
+        computers
+    CLICK:
+      cat_id: UIClick
+      labels:
+      - the sound of a click
+      - typing clicks, button press clicks, response to input
+    DATA:
+      cat_id: UIData
+      labels:
+      - the sound of a data
+      - user interface calculations, scanning, thinking, text displayed on screen
+    GLITCH:
+      cat_id: UIGlitch
+      labels:
+      - the sound of a glitch
+      - on screen glitches or static
+    MISC:
+      cat_id: UIMisc
+      labels:
+      - the sound of user interface
+    MOTION:
+      cat_id: UIMvmt
+      labels:
+      - the sound of a motion
+      - user interface slides, swipes, scrolls
+  VEGETATION:
+    GRASS:
+      cat_id: VEGEGras
+      labels:
+      - the sound of grass
+      - individual movement of grass elements in a studio or exterior environment
+    LEAVES:
+      cat_id: VEGELeaf
+      labels:
+      - the sound of leaves
+      - individual movement of leaf elements in a studio or exterior environment
+    MISC:
+      cat_id: VEGEMisc
+      labels:
+      - the sound of vegetation
+      - vegetation and foliage sounds
+    TREE:
+      cat_id: VEGETree
+      labels:
+      - the sound of a tree
+      - individual movement of tree and branch elements in a studio or exterior environment
+  VEHICLES:
+    ALARM:
+      cat_id: VEHAlrm
+      labels:
+      - the sound of an alarm
+      - not sirens, but just car alarms, car alarm arm and disarm chirps
+    ANTIQUE:
+      cat_id: VEHAntq
+      labels:
+      - an antique vehicle
+      - very old vehicles, such a model a, model t
+    ATV:
+      cat_id: VEHAtv
+      labels:
+      - the sound of an atv
+      - all-terrain vehicle, three and four-wheelers, dune buggies, side by side
+    BICYCLE:
+      cat_id: VEHBike
+      labels:
+      - the sound of a bicycle
+      - bicycles, recumbent bikes, unicycles too
+    BRAKE:
+      cat_id: VEHBrake
+      labels:
+      - vehicle brake sounds
+      - brake squeals and screeches of all kinds
+    BUS:
+      cat_id: VEHBus
+      labels:
+      - the sound of bus
+      - city buses, school buses, greyhound buses
+    CAR:
+      cat_id: VEHCar
+      labels:
+      - the sound of a car
+      - all cars except overtly antique
+    CONSTRUCTION:
+      cat_id: VEHCnst
+      labels:
+      - construction vehicle sounds
+      - cranes, bulldozers, paving vehicles, any construction related vehicle goes
+        here
+    DOOR:
+      cat_id: VEHDoor
+      labels:
+      - a car or vehicle door
+    ELECTRIC:
+      cat_id: VEHElec
+      labels:
+      - an electric vehicle
+      - electric golf carts, electric scooters, electric cars
+    EMERGENCY:
+      cat_id: VEHEmrg
+      labels:
+      - the sound of an emergency
+      - specifically emegency vehicles like firetrucks, ambulances, police cars
+    FARM:
+      cat_id: VEHFarm
+      labels:
+      - the sound of a farm
+      - i'd put farm tractors here, some overlap possibly with construction vehicles
+    FREIGHT:
+      cat_id: VEHFrght
+      labels:
+      - the sound of a freight
+      - big rigs, lorry, semi-truck, u-haul trucks, not for trains, which have their
+        own category
+    GENERIC BY:
+      cat_id: VEHBy
+      labels:
+      - the sound of a generic by
+      - generic or general vehicle pass bys, not 'traffic'
+    HORN:
+      cat_id: VEHHorn
+      labels:
+      - a car horn
+      - specifically car and vehicles horns
+    INTERIOR:
+      cat_id: VEHInt
+      labels:
+      - interior ambience of a vehicle
+      - interior recordings (ambiences) for car, truck, van interiors, from passenger
+        cars, to back of a moving truck, riding inside a bus
+    JALOPY:
+      cat_id: VEHJalop
+      labels:
+      - the sound of a jalopy
+      - backfiring, poorly running vehicle
+    MECHANISM:
+      cat_id: VEHMech
+      labels:
+      - vehicle mechanical sounds
+      - various mechanisms on a vehicle, like seatbelts, window cranks, door locks
+    MILITARY:
+      cat_id: VEHMil
+      labels:
+      - a military ground vehicle
+      - overtly military ground vehicles
+    MISC:
+      cat_id: VEHMisc
+      labels:
+      - the sound of vehicles
+      - vehicles sounds
+    MOTORCYCLE:
+      cat_id: VEHMoto
+      labels:
+      - the sound of a motorcycle
+      - scooters, motorcycles, vespas, motocross… all things 2 wheeled and powered
+    RACING:
+      cat_id: VEHRace
+      labels:
+      - a racing car
+      - racing cars or drag racing cars
+    SIREN:
+      cat_id: VEHSirn
+      labels:
+      - a vehicle siren
+      - police, firetruck, ambulance sirens
+    SKID:
+      cat_id: VEHSkid
+      labels:
+      - the sound of a skid
+    SUSPENSION:
+      cat_id: VEHSusp
+      labels:
+      - the sound of a suspension
+      - suspension squeaks and rattles, for any car, truck, semi
+    TIRE:
+      cat_id: VEHTire
+      labels:
+      - the sound of a tire
+      - tire rolls on various surfaces, tire whines, no engine sounds, isolated tire
+        sounds
+    TRUCK VAN & SUV:
+      cat_id: VEHTruck
+      labels:
+      - vehicles truck van & suv
+      - passenger trucks, pickup trucks, vans and suvs
+    UTILITY:
+      cat_id: VEHUtil
+      labels:
+      - the sound of an utility
+      - golf carts, cushmans, traffic, gator, small motorized utility vehicles
+    WAGON:
+      cat_id: VEHWagn
+      labels:
+      - the sound of a wagon
+      - old wood wagon, horse drawn carts, carriages, buggies
+    WINDOW:
+      cat_id: VEHWndw
+      labels:
+      - the sound of a window
+      - powered windows for any vehicles, crank windows should go in vehicles-mechanism
+  VOICES:
+    ALIEN:
+      cat_id: VOXAlien
+      labels:
+      - alien voice sounds
+      - weird alien vocals here
+    BABY:
+      cat_id: VOXBaby
+      labels:
+      - the sound of a baby
+      - very young babies through toddler, non-word vocals, cut vocals
+    CHEER:
+      cat_id: VOXCheer
+      labels:
+      - a single person cheering
+    CHILD:
+      cat_id: VOXChld
+      labels:
+      - a child or teenager speaking or vocalizing
+      - various vocals for a child or a teenager
+    CRYING:
+      cat_id: VOXCry
+      labels:
+      - the sound of a person crying
+      - a single person crying
+    EFFORTS:
+      cat_id: VOXEfrt
+      labels:
+      - the sound of efforts
+      - a single fight and vocal efforts, single grunts, and things like that
+    FEMALE:
+      cat_id: VOXFem
+      labels:
+      - the sound of a female
+      - any generic female vocal or dialog or misc vocal that doesn't fit somewhere
+        else
+    FUTZED:
+      cat_id: VOXFutz
+      labels:
+      - the sound of a futzed
+    HISTORICAL:
+      cat_id: VOXHist
+      labels:
+      - the sound of a historical
+      - for storing famous speeches, famous news broadcasts, presidential speeches
+    LAUGH:
+      cat_id: VOXLaff
+      labels:
+      - the sound of laughter
+      - a single person laughing
+    MALE:
+      cat_id: VOXMale
+      labels:
+      - the sound of a male
+      - any generic male vocal or dialog or misc vocal that doesn't fit somewhere
+        else
+    MISC:
+      cat_id: VOXMisc
+      labels:
+      - the sound of voices
+      - the voice category is for single voices
+    REACTION:
+      cat_id: VOXReac
+      labels:
+      - a single vocal reaction such as an ooh or aah
+      - a single ooo or aah and things of that nature
+    SCREAM:
+      cat_id: VOXScrm
+      labels:
+      - the sound of a scream
+      - a single scream or yell, battle cry, agonizing death
+    SINGING:
+      cat_id: VOXSing
+      labels:
+      - the sound of a singing
+      - a single voice singing, a child singing
+    WHISPER:
+      cat_id: VOXWhsp
+      labels:
+      - a single whispering voice
+  WATER:
+    BUBBLES:
+      cat_id: WATRBubl
+      labels:
+      - the sound of bubbles
+      - single or continuous bubbles
+    DRAIN:
+      cat_id: WATRDran
+      labels:
+      - the sound of a drain
+      - draining gurgling water, pulling in air with it as it drains, think a kitchen
+        sink drain, or a storm drain, shower drain
+    DRIP:
+      cat_id: WATRDrip
+      labels:
+      - the sound of water drip
+      - water dripping, slow to fast
+    FIZZ:
+      cat_id: WATRFizz
+      labels:
+      - the sound of a fizz
+      - that sound of alka-seltzer in a cup, air fizzing in water
+    FLOW:
+      cat_id: WATRFlow
+      labels:
+      - the sound of a flow
+      - general water flowing, in our case as in a river, creek or stream
+    FOUNTAIN:
+      cat_id: WATRFoun
+      labels:
+      - the sound of a fountain
+      - water features and fountains, trickles or flows for a fountain, splashy fountains
+    IMPACT:
+      cat_id: WATRImpt
+      labels:
+      - the sound of water impact
+      - percussive water impact, large crash or slam of water, as in huge wave hitting
+        an object
+    LAP:
+      cat_id: WATRLap
+      labels:
+      - the sound of a lap
+      - water splashing against something like against the side of a boat or canoe,
+        or a dock
+    MISC:
+      cat_id: WATRMisc
+      labels:
+      - the sound of water
+    MOVEMENT:
+      cat_id: WATRMvmt
+      labels:
+      - the sound of water movement
+      - movement in water but not underwater (see water-underwater) drags through
+        water, swimming movements, sweeps of objects through water
+    PLUMBING:
+      cat_id: WATRPlmb
+      labels:
+      - the sound of a plumbing
+      - household plumbing, like a sink running, a toilet flush, the shower running
+    POUR:
+      cat_id: WATRPour
+      labels:
+      - the sound of water pour
+      - pouring water, onto ground, into a cup
+    SPLASH:
+      cat_id: WATRSplsh
+      labels:
+      - the sound of water splash
+      - water splashes of all kind, a person diving into a pool, a whale cresting,
+        throwing a rock into water
+    SPRAY:
+      cat_id: WATRSpray
+      labels:
+      - the sound of a spray
+      - big sprays of a wave crash, to a hose spray
+    STEAM:
+      cat_id: WATRStm
+      labels:
+      - the sound of a steam
+      - very wet hisses, radiators, saunas
+    SURF:
+      cat_id: WATRSurf
+      labels:
+      - the sound of a surf
+      - the general roar of the ocean, not the sport
+    TURBULENT:
+      cat_id: WATRTurb
+      labels:
+      - turbulent and churning water sounds
+      - very big splashy water
+    UNDERWATER:
+      cat_id: WATRUndwtr
+      labels:
+      - specifically underwater sounds, flows, current and movement, swimming underwater
+    WATERFALL:
+      cat_id: WATRFall
+      labels:
+      - waterfalls from small cascading ones to niagara falls
+    WAVE:
+      cat_id: WATRWave
+      labels:
+      - the sound of a wave
+      - for general water waves, distinct waves
+  WEAPONS:
+    ARMOR:
+      cat_id: WEAPArmr
+      labels:
+      - the sound of an armor
+      - knights armor movement, hits
+    ARROW:
+      cat_id: WEAPArro
+      labels:
+      - the sound of an arrow
+      - arrow slides, arrow impacts
+    AXE:
+      cat_id: WEAPAxe
+      labels:
+      - the sound of an axe
+      - specifically a weaponized ax
+    BLUNT:
+      cat_id: WEAPBlnt
+      labels:
+      - the sound of a blunt
+      - blunt weapons, like maces and flails, but also nightsticks
+    BOW:
+      cat_id: WEAPBow
+      labels:
+      - the sound of a bow
+      - bows and crossbows, articulation, twangs, bolts being loaded
+    KNIFE:
+      cat_id: WEAPKnif
+      labels:
+      - the sound of a knife
+      - smaller knives, weapons-swords has it own subcategory here
+    MISC:
+      cat_id: WEAPMisc
+      labels:
+      - the sound of weapons
+    POLEARM:
+      cat_id: WEAPPole
+      labels:
+      - the sound of a polearm
+      - a long spear or long poled weapon with sharp components at the end, like a
+        harpoon
+    SIEGE:
+      cat_id: WEAPSiege
+      labels:
+      - the sound of a siege
+      - a siege weapon is a device designed to break or circumvent fortifications,
+        catapults, trebuchets
+    SWORD:
+      cat_id: WEAPSwrd
+      labels:
+      - the sound of a sword
+    WHIP:
+      cat_id: WEAPWhip
+      labels:
+      - the sound of a whip
+  WEATHER:
+    HAIL:
+      cat_id: HAIL
+      labels:
+      - the sound of a hail
+      - hail on various surfaces
+    MISC:
+      cat_id: WTHR
+      labels:
+      - the sound of weather
+    STORM:
+      cat_id: STORM
+      labels:
+      - the sound of a storm
+      - composite storms, wind, rain, thunder, where elements aren't isolated
+    THUNDER:
+      cat_id: THUN
+      labels:
+      - the sound of a thunder
+      - thunder and lightning, dry, wet, distant rumbles to sharp thunder cracks
+  WHISTLES:
+    HUMAN:
+      cat_id: WHSTHmn
+      labels:
+      - the sound of a human
+    MECHANICAL:
+      cat_id: WHSTMech
+      labels:
+      - the sound of a mechanical
+      - train whistles, referee whistles, tea pot whistles, etc, any whistle not made
+        by a human
+    MISC:
+      cat_id: WHSTMisc
+      labels:
+      - the sound of whistles
+  WIND:
+    DESIGNED:
+      cat_id: WINDDsgn
+      labels:
+      - a designed wind sound effect
+      - designed or manufactured or artificial winds, wind machines, synth winds
+    GENERAL:
+      cat_id: WIND
+      labels:
+      - the sound of wind
+      - base and general wind category
+    GUST:
+      cat_id: WINDGust
+      labels:
+      - the sound of a gust
+      - for more singular gusts or buffets, accents to cut into other winds
+    INTERIOR:
+      cat_id: WINDInt
+      labels:
+      - the sound of an interior
+      - interior wind, through window, or crack in door
+    TONAL:
+      cat_id: WINDTonl
+      labels:
+      - tonal howling wind sounds
+      - wind howls, wind in wires, wind whistles, overtly tonal winds
+    TURBULENT:
+      cat_id: WINDTurb
+      labels:
+      - turbulent gusty wind sounds
+      - extremely violent wind, big buffeting, huge storm winds
+    VEGETATION:
+      cat_id: WINDVege
+      labels:
+      - the sound of a vegetation
+      - wind through foliage, vegetation, grass, trees, leaves, plants
+  WINDOWS:
+    COVERING:
+      cat_id: WNDWCover
+      labels:
+      - the sound of a covering
+      - window curtains, blinds, shutters
+    HARDWARE:
+      cat_id: WNDWHdwr
+      labels:
+      - window hardware, latches, and handles
+      - window latches, cranks, locks
+    KNOCK:
+      cat_id: WNDWKnck
+      labels:
+      - knocking on a window
+      - knocking on various window surfaces, knocking on glass
+    METAL:
+      cat_id: WNDWMetl
+      labels:
+      - a metal window frame
+      - metal framed windows, open and close
+    MISC:
+      cat_id: WNDWMisc
+      labels:
+      - the sound of windows
+    PLASTIC:
+      cat_id: WNDWPlas
+      labels:
+      - a plastic window
+      - plastic framed windows, plexiglass windows
+    WOOD:
+      cat_id: WNDWWood
+      labels:
+      - a wooden window frame
+      - wood framed windows, open and close
+  WINGS:
+    BIRD:
+      cat_id: WINGBird
+      labels:
+      - the sound of a bird
+      - bird wing flaps, hummingbirds, pigeon wings
+    CREATURE:
+      cat_id: WINGCrea
+      labels:
+      - creature wing sounds
+      - dragon wings, fairy wings, any manner of creature and monster wings
+    INSECT:
+      cat_id: WINGInsc
+      labels:
+      - insect wing sounds
+      - fly and bee wings, dragonflies, moths, butterflies
+    MISC:
+      cat_id: WINGMisc
+      labels:
+      - the sound of wings
+  WOOD:
+    BREAK:
+      cat_id: WOODBrk
+      labels:
+      - the sound of wooden break
+      - wood breaks, shatters, cracks, crunches
+    CRASH & DEBRIS:
+      cat_id: WOODCrsh
+      labels:
+      - wood crash & debris
+      - group wood crashes and debris, and pieces falling, as in after an explosion
+    FRICTION:
+      cat_id: WOODFric
+      labels:
+      - the sound of wooden friction
+      - wood stress, especially creaks
+    HANDLE:
+      cat_id: WOODHndl
+      labels:
+      - the sound of wooden handle
+      - handling a wooden object, picking up, setting down, etc
+    IMPACT:
+      cat_id: WOODImpt
+      labels:
+      - the sound of wooden impact
+      - singular wood hits, drops, impacts, board hits
+    MISC:
+      cat_id: WOODMisc
+      labels:
+      - the sound of wood
+    MOVEMENT:
+      cat_id: WOODMvmt
+      labels:
+      - the sound of wooden movement
+      - wood movement including rattles, drag, slides, rolls
+    TONAL:
+      cat_id: WOODTonl
+      labels:
+      - the sound of wooden tonal
+      - tonal bowed wood sounds, ringing wood

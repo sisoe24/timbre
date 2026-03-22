@@ -77,7 +77,16 @@ def load_config(
         }
     """
     config_path = Path(config_path or DEFAULT_CONFIG_PATH)
-    vocab_path = Path(vocab_path or DEFAULT_VOCAB_PATH)
+
+    # Resolve vocab_path: explicit arg > config.yaml vocab_file > default
+    if vocab_path is None:
+        cfg_peek = _load_yaml(config_path)
+        vocab_file = cfg_peek.get("model", {}).get("vocab_file")
+        if vocab_file:
+            vocab_path = config_path.parent / vocab_file
+        else:
+            vocab_path = DEFAULT_VOCAB_PATH
+    vocab_path = Path(vocab_path)
 
     cfg = _load_yaml(config_path)
     vocab = _load_yaml(vocab_path)
