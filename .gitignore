@@ -1,5 +1,6 @@
 # Virtual environment — never commit this
 .venv/
+homebrew-timbre/
 
 # Outputs — generated at runtime
 outputs/
