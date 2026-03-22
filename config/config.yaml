@@ -71,17 +71,17 @@ analysis:
 # ---------------------------------------------------------------------------
 output:
   # Root directory for all outputs
-  output_dir: "./outputs"
+  output_dir: "./out"
 
   # Sub-directory structure
-  json_dir: "./outputs/json"
-  csv_dir: "./outputs/csv"
-  markdown_dir: "./outputs/markdown"
+  json_dir: "./out/json"
+  csv_dir: "./out/csv"
+  markdown_dir: "./out/markdown"
 
   # Catalog file names
-  catalog_markdown: "./outputs/catalog.md"
-  catalog_csv: "./outputs/catalog.csv"
-  batch_json: "./outputs/batch_results.json"
+  catalog_markdown: "./out/catalog.md"
+  catalog_csv: "./out/catalog.csv"
+  batch_json: "./out/batch_results.json"
 
   # If true, save per-file Markdown report in addition to JSON
   save_per_file_markdown: true
