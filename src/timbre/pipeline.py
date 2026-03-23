@@ -15,7 +15,7 @@ import logging
 from typing import Dict, List, Optional
 from pathlib import Path
 
-from .output.schema import (AudioMetadata, AcousticSummary,
+from .output.schema import (AudioMetadata, AcousticSummary, AnalysisProvenance,
                             AudioAnalysisRecord, build_suggested_filename)
 from .models.clap_tagger import CLAP_SAMPLE_RATE, CLAPTagger
 from .models.label_cache import LabelEmbeddingCache, build_cache_metadata
@@ -362,6 +362,14 @@ class AudioAnalysisPipeline:
             dominant_frequency_band=dominant_band,
         )
 
+        analysis_provenance = AnalysisProvenance(
+            model_id=self.config.get('model_id', 'unknown'),
+            vocab_path=self.config.get('vocab_path', 'unknown'),
+            vocab_sha256=self.config.get('vocab_sha256', 'unknown'),
+            cache_path=self.config.get('label_cache_path'),
+            cache_fingerprint=self.config.get('cache_fingerprint'),
+        )
+
         # Top-10 CLAP scores for the record
         top_labels = dict(
             sorted(full_scores.items(), key=lambda x: x[1], reverse=True)[:10]
@@ -397,4 +405,5 @@ class AudioAnalysisPipeline:
             top_labels=top_labels,
             metadata=metadata,
             acoustic_summary=acoustic_summary,
+            analysis_provenance=analysis_provenance,
         )

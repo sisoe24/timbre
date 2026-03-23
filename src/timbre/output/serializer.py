@@ -97,6 +97,10 @@ CSV_COLUMNS = [
     'source_id',
     'user_data',
     'suggested_filename',
+    'model_id',
+    'vocab_file',
+    'vocab_sha256',
+    'cache_fingerprint',
 ]
 
 
@@ -130,6 +134,10 @@ def save_csv(
             'source_id': r.source_id,
             'user_data': r.user_data,
             'suggested_filename': r.suggested_filename,
+            'model_id': r.analysis_provenance.model_id,
+            'vocab_file': Path(r.analysis_provenance.vocab_path).name,
+            'vocab_sha256': r.analysis_provenance.vocab_sha256,
+            'cache_fingerprint': r.analysis_provenance.cache_fingerprint or '',
         })
 
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
@@ -207,6 +215,16 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         f"| **Format** | {r.metadata.format.upper()} |",
         f"| **Sample Rate** | {r.metadata.sample_rate_hz} Hz |",
         f"| **Confidence** | {r.confidence:.3f} |",
+        '',
+        '## Analysis Provenance',
+        '',
+        f"| Field | Value |",
+        f"|---|---|",
+        f"| **Model** | `{r.analysis_provenance.model_id}` |",
+        f"| **Vocabulary File** | `{Path(r.analysis_provenance.vocab_path).name}` |",
+        f"| **Vocabulary SHA256** | `{r.analysis_provenance.vocab_sha256}` |",
+        f"| **Cache Fingerprint** | `{r.analysis_provenance.cache_fingerprint or '—'}` |",
+        f"| **Cache Path** | `{r.analysis_provenance.cache_path or '—'}` |",
         '',
         '## FXName',
         '',

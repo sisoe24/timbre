@@ -46,6 +46,16 @@ class AcousticSummary(BaseModel):
     dominant_frequency_band: str   # sub_bass / bass / low_mid / mid / high / air
 
 
+class AnalysisProvenance(BaseModel):
+    """Inputs and cache provenance for a rendered analysis record."""
+
+    model_id: str
+    vocab_path: str
+    vocab_sha256: str
+    cache_path: str | None = None
+    cache_fingerprint: str | None = None
+
+
 class AudioAnalysisRecord(BaseModel):
     """
     Complete UCS-compliant analysis record for one audio file.
@@ -105,6 +115,7 @@ class AudioAnalysisRecord(BaseModel):
     # ---- Metadata -------------------------------------------------------
     metadata: AudioMetadata
     acoustic_summary: AcousticSummary
+    analysis_provenance: AnalysisProvenance
 
     @field_validator('confidence')
     @classmethod
@@ -131,6 +142,7 @@ class AudioAnalysisRecord(BaseModel):
             'source_id': self.source_id,
             'user_data': self.user_data,
             'suggested_filename': self.suggested_filename,
+            'analysis_provenance': self.analysis_provenance.model_dump(),
         }
 
     def to_full_dict(self) -> dict:
