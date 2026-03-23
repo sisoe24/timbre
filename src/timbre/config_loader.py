@@ -33,13 +33,13 @@ from pathlib import Path
 
 import yaml
 
+from .paths import PROJECT_ROOT
 from .vocab_state import get_active_vocab_path
 
 logger = logging.getLogger(__name__)
 
-ROOT = Path(__file__).parent.parent.parent
-DEFAULT_CONFIG_PATH = ROOT / 'config' / 'config.yaml'
-DEFAULT_VOCAB_PATH = ROOT / 'config' / 'vocabulary.yaml'
+DEFAULT_CONFIG_PATH = PROJECT_ROOT / 'config' / 'config.yaml'
+DEFAULT_VOCAB_PATH = PROJECT_ROOT / 'config' / 'vocabulary.yaml'
 NOISY_LOGGERS = [
     'filelock',
     'httpcore',
@@ -165,7 +165,7 @@ def load_config(
     # artifacts can live outside the editable config directory.
     raw_cache_path = model_cfg.get('label_cache_path')
     if raw_cache_path:
-        cache_base_path = (ROOT / raw_cache_path).resolve()
+        cache_base_path = (PROJECT_ROOT / raw_cache_path).resolve()
         label_cache_path = str(_fingerprinted_cache_path(cache_base_path, cache_fingerprint))
         label_cache_base_path = str(cache_base_path)
     else:

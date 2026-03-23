@@ -6,10 +6,9 @@ import time
 import logging
 from pathlib import Path
 
+from timbre.paths import PROJECT_ROOT
 from timbre.models.clap_tagger import CLAPTagger
 from timbre.models.label_cache import LabelEmbeddingCache, build_cache_metadata
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 def build_cache_for_config(

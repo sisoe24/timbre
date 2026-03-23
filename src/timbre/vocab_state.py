@@ -8,8 +8,9 @@ from typing import Any
 from pathlib import Path
 from datetime import datetime, timezone
 
-ROOT = Path(__file__).resolve().parents[2]
-STATE_PATH = ROOT / '.cache' / 'vocab_state.json'
+from .paths import PROJECT_ROOT
+
+STATE_PATH = PROJECT_ROOT / '.cache' / 'vocab_state.json'
 
 
 def _default_state() -> dict[str, Any]:

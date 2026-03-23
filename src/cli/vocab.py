@@ -9,6 +9,7 @@ import click
 from rich.table import Table
 from rich.console import Console
 
+from timbre.paths import PROJECT_ROOT
 from timbre.vocab_state import (remember_vocab, list_known_vocabs,
                                 clear_active_vocab,
                                 remember_vocab_with_metadata)
@@ -17,7 +18,6 @@ from timbre.models.label_cache import LabelEmbeddingCache
 
 from .cache import build_cache_for_config
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CONFIG_DIR = PROJECT_ROOT / 'config'
 console = Console()
 
