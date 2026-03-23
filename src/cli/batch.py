@@ -12,6 +12,8 @@ from rich.console import Console
 from rich.progress import (Progress, BarColumn, TextColumn, SpinnerColumn,
                            TimeElapsedColumn, MofNCompleteColumn)
 
+from timbre.vocab_state import remember_vocab
+
 console = Console()
 
 
@@ -107,9 +109,11 @@ def main(
     if no_windowed:
         cfg['use_windowed_analysis'] = False
     setup_logging(cfg, debug=debug)
+    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
 
     vocab_file = Path(cfg['vocab_path']).name
     vocab_sha = cfg['vocab_sha256'][:12]
+    vocab_source = cfg['vocab_source']
 
     out_root = Path(output_dir or cfg['output'].get('output_dir', './outputs'))
     json_dir = out_root / 'json'
@@ -124,7 +128,8 @@ def main(
             f"Input: [green]{input_dir}[/green]\n"
             f"Output: [yellow]{out_root}[/yellow]\n"
             f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-            f"Vocab: [magenta]{vocab_file}[/magenta] [dim]({vocab_sha})[/dim]",
+            f"Vocab: [magenta]{vocab_file}[/magenta] "
+            f"[dim]({vocab_sha}, {vocab_source})[/dim]",
             title='🎧 Batch Analysis',
         )
     )

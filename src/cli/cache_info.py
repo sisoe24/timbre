@@ -39,6 +39,7 @@ def main(config: str, vocab: str | None) -> None:
     table.add_row('Resolved cache path', str(cache_path))
     table.add_row('Cache exists', 'yes' if cache_path.exists() else 'no')
     table.add_row('Model', str(cfg.get('model_id')))
+    table.add_row('Vocabulary source', str(cfg.get('vocab_source')))
     table.add_row('Vocabulary path', str(cfg.get('vocab_path')))
     table.add_row('Vocabulary SHA256', str(cfg.get('vocab_sha256')))
     table.add_row('Cache fingerprint', str(cfg.get('cache_fingerprint')))

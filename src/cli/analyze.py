@@ -9,6 +9,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.console import Console
 
+from timbre.vocab_state import remember_vocab
+
 console = Console()
 
 
@@ -87,9 +89,11 @@ def main(
         cfg['use_windowed_analysis'] = False
 
     setup_logging(cfg, debug=debug)
+    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
 
     vocab_file = Path(cfg['vocab_path']).name
     vocab_sha = cfg['vocab_sha256'][:12]
+    vocab_source = cfg['vocab_source']
 
     out_dir = Path(output_dir or cfg['output'].get('json_dir', './outputs/json'))
 
@@ -99,7 +103,8 @@ def main(
                 f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
                 f"File: [green]{audio_file}[/green]\n"
                 f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-                f"Vocab: [magenta]{vocab_file}[/magenta] [dim]({vocab_sha})[/dim]",
+                f"Vocab: [magenta]{vocab_file}[/magenta] "
+                f"[dim]({vocab_sha}, {vocab_source})[/dim]",
                 title='🎧 Analysis',
             )
         )

@@ -33,6 +33,8 @@ from pathlib import Path
 
 import yaml
 
+from .vocab_state import get_active_vocab_path
+
 logger = logging.getLogger(__name__)
 
 ROOT = Path(__file__).parent.parent.parent
@@ -99,14 +101,23 @@ def load_config(
     """
     config_path = Path(config_path or DEFAULT_CONFIG_PATH)
 
-    # Resolve vocab_path: explicit arg > config.yaml vocab_file > default
+    # Resolve vocab_path: explicit arg > active vocab context > config.yaml > default
     if vocab_path is None:
-        cfg_peek = _load_yaml(config_path)
-        vocab_file = cfg_peek.get('model', {}).get('vocab_file')
-        if vocab_file:
-            vocab_path = config_path.parent / vocab_file
+        active_vocab_path = get_active_vocab_path()
+        if active_vocab_path is not None:
+            vocab_path = active_vocab_path
+            vocab_source = 'active'
         else:
-            vocab_path = DEFAULT_VOCAB_PATH
+            cfg_peek = _load_yaml(config_path)
+            vocab_file = cfg_peek.get('model', {}).get('vocab_file')
+            if vocab_file:
+                vocab_path = config_path.parent / vocab_file
+                vocab_source = 'config'
+            else:
+                vocab_path = DEFAULT_VOCAB_PATH
+                vocab_source = 'default'
+    else:
+        vocab_source = 'explicit'
     vocab_path = Path(vocab_path)
 
     cfg = _load_yaml(config_path)
@@ -171,6 +182,8 @@ def load_config(
         'cache_fingerprint': cache_fingerprint,
         'config_path': str(resolved_config_path),
         'vocab_path': str(resolved_vocab_path),
+        'vocab_file': resolved_vocab_path.name,
+        'vocab_source': vocab_source,
         'vocab_sha256': vocab_sha256,
         # Audio
         'target_sr': audio_cfg.get('target_sr', 48000),
