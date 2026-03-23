@@ -32,9 +32,7 @@ max_line_length = 100
 
 [project.scripts]
 timbre = "cli.main:main"
-timbre-analyze = "cli.analyze:main"
-timbre-batch = "cli.batch:main"
-timbre-cache = "cli.cache:main"
+
 
 [tool.poetry]
 packages = [
