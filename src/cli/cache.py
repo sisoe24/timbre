@@ -10,7 +10,7 @@ import click
 
 from timbre.config_loader import load_config, setup_logging
 from timbre.models.clap_tagger import CLAPTagger
-from timbre.models.label_cache import LabelEmbeddingCache
+from timbre.models.label_cache import LabelEmbeddingCache, build_cache_metadata
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -57,7 +57,15 @@ def main(config: str, vocab: str | None, force: bool, batch_size: int) -> None:
     )
 
     cache = LabelEmbeddingCache(cache_path)
-    if not force and cache.is_valid(expected_label_count=len(candidate_labels)):
+    expected_metadata = {
+        'model_id': config.get('model_id'),
+        'vocab_sha256': config.get('vocab_sha256'),
+        'cache_fingerprint': config.get('cache_fingerprint'),
+    }
+    if not force and cache.is_valid(
+        expected_label_count=len(candidate_labels),
+        expected_metadata=expected_metadata,
+    ):
         logger.info('Cache already up to date at %s — use --force to rebuild.', cache_path)
         return
 
@@ -78,6 +86,7 @@ def main(config: str, vocab: str | None, force: bool, batch_size: int) -> None:
         label_to_cat_id=config['label_to_cat_id'],
         label_to_category_full=config['label_to_category_full'],
         batch_size=batch_size,
+        metadata=build_cache_metadata(config, candidate_labels),
     )
     elapsed = time.perf_counter() - start
 

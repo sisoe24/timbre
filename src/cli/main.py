@@ -9,6 +9,7 @@ from scripts.validate_clap import main as validate_command
 from .batch import main as batch_command
 from .cache import main as cache_command
 from .analyze import main as analyze_command
+from .cache_info import main as cache_info_command
 
 
 @click.group()
@@ -19,4 +20,5 @@ def main() -> None:
 main.add_command(analyze_command, name='analyze')
 main.add_command(batch_command, name='batch')
 main.add_command(cache_command, name='cache')
+main.add_command(cache_info_command, name='cache-info')
 main.add_command(validate_command, name='validate')

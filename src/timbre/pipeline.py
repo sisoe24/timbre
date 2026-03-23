@@ -18,7 +18,7 @@ from pathlib import Path
 from .output.schema import (AudioMetadata, AcousticSummary,
                             AudioAnalysisRecord, build_suggested_filename)
 from .models.clap_tagger import CLAP_SAMPLE_RATE, CLAPTagger
-from .models.label_cache import LabelEmbeddingCache
+from .models.label_cache import LabelEmbeddingCache, build_cache_metadata
 from .ingestion.audio_loader import AudioFile, load_audio
 from .analysis.event_detector import (SoundEvent, detect_events,
                                       detect_events_from_full_clip)
@@ -94,8 +94,16 @@ class AudioAnalysisPipeline:
         if cache_path:
             self.cache = LabelEmbeddingCache(cache_path)
             n_labels = len(self.candidate_labels)
+            expected_metadata = {
+                'model_id': self.config.get('model_id'),
+                'vocab_sha256': self.config.get('vocab_sha256'),
+                'cache_fingerprint': self.config.get('cache_fingerprint'),
+            }
 
-            if self.cache.is_valid(expected_label_count=n_labels):
+            if self.cache.is_valid(
+                expected_label_count=n_labels,
+                expected_metadata=expected_metadata,
+            ):
                 self.cache.load()
                 logger.info('Label cache loaded (%d labels).', n_labels)
             else:
@@ -110,6 +118,7 @@ class AudioAnalysisPipeline:
                     label_to_subcategory=self.label_to_subcategory,
                     label_to_cat_id=self.label_to_cat_id,
                     label_to_category_full=self.label_to_category_full,
+                    metadata=build_cache_metadata(self.config, self.candidate_labels),
                 )
                 logger.info('Label cache built and saved to %s.', cache_path)
         else:

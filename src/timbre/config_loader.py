@@ -25,6 +25,7 @@ This is flattened into four parallel lookup dicts:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import logging.handlers
 from typing import Dict, List, Optional
@@ -37,6 +38,18 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).parent.parent.parent
 DEFAULT_CONFIG_PATH = ROOT / 'config' / 'config.yaml'
 DEFAULT_VOCAB_PATH = ROOT / 'config' / 'vocabulary.yaml'
+
+
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _sha256_text(value: str) -> str:
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
+def _fingerprinted_cache_path(base_path: Path, fingerprint: str) -> Path:
+    return base_path.with_name(f"{base_path.stem}_{fingerprint}{base_path.suffix}")
 
 
 def load_config(
@@ -124,20 +137,34 @@ def load_config(
     log_cfg = cfg.get('logging', {})
     ucs_cfg = cfg.get('ucs', {})
 
+    model_id = model_cfg.get('model_id', 'laion/larger_clap_general')
+    resolved_config_path = config_path.resolve()
+    resolved_vocab_path = vocab_path.resolve()
+    vocab_sha256 = _sha256_file(resolved_vocab_path)
+    cache_fingerprint = _sha256_text(f'{model_id}:{vocab_sha256}')[:12]
+
     # Resolve label_cache_path relative to the project root so generated
     # artifacts can live outside the editable config directory.
     raw_cache_path = model_cfg.get('label_cache_path')
     if raw_cache_path:
-        label_cache_path = str((ROOT / raw_cache_path).resolve())
+        cache_base_path = (ROOT / raw_cache_path).resolve()
+        label_cache_path = str(_fingerprinted_cache_path(cache_base_path, cache_fingerprint))
+        label_cache_base_path = str(cache_base_path)
     else:
         label_cache_path = None
+        label_cache_base_path = None
 
     runtime = {
         # Model
-        'model_id': model_cfg.get('model_id', 'laion/larger_clap_general'),
+        'model_id': model_id,
         'device': model_cfg.get('device', None),
         'fp16': model_cfg.get('fp16', True),
         'label_cache_path': label_cache_path,
+        'label_cache_base_path': label_cache_base_path,
+        'cache_fingerprint': cache_fingerprint,
+        'config_path': str(resolved_config_path),
+        'vocab_path': str(resolved_vocab_path),
+        'vocab_sha256': vocab_sha256,
         # Audio
         'target_sr': audio_cfg.get('target_sr', 48000),
         # Analysis

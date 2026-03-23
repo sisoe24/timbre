@@ -28,8 +28,9 @@ Cache file format  (PyTorch .pt dict)
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
+from datetime import datetime, timezone
 
 import numpy as np
 import torch
@@ -67,6 +68,7 @@ class LabelEmbeddingCache:
         label_to_cat_id: Dict[str, str],
         label_to_category_full: Dict[str, str],
         batch_size: int = 64,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
         """
         Encode all labels, compute category centroids, and save to disk.
@@ -115,6 +117,7 @@ class LabelEmbeddingCache:
         logit_scale = tagger.logit_scale
 
         self._data = {
+            'metadata': metadata or {},
             'labels': candidate_labels,
             'embeddings': embeddings,
             'logit_scale': logit_scale,
@@ -155,21 +158,51 @@ class LabelEmbeddingCache:
             len(self._data['labels']),
             len(self._data['categories']),
         )
+        metadata = self.metadata
+        if metadata:
+            logger.info(
+                'Cache metadata: model=%s vocab=%s fingerprint=%s',
+                metadata.get('model_id', 'unknown'),
+                metadata.get('vocab_path', 'unknown'),
+                metadata.get('cache_fingerprint', 'unknown'),
+            )
 
-    def is_valid(self, expected_label_count: Optional[int] = None) -> bool:
+    def is_valid(
+        self,
+        expected_label_count: Optional[int] = None,
+        expected_metadata: Optional[Dict[str, Any]] = None,
+    ) -> bool:
         """
         Return True if the cache file exists and (optionally) contains the
         expected number of labels.
         """
         if not self.cache_path.exists():
             return False
-        if expected_label_count is not None:
-            try:
-                data = torch.load(self.cache_path, weights_only=False)
-                return len(data.get('labels', [])) == expected_label_count
-            except Exception:
-                return False
+        try:
+            data = torch.load(self.cache_path, weights_only=False)
+        except Exception:
+            return False
+
+        if expected_label_count is not None and len(data.get('labels', [])) != expected_label_count:
+            return False
+
+        if expected_metadata:
+            metadata = data.get('metadata', {})
+            for key, value in expected_metadata.items():
+                if metadata.get(key) != value:
+                    return False
+
         return True
+
+    def read_metadata(self) -> Dict[str, Any]:
+        """Read cache metadata without fully loading it into the instance."""
+        if not self.cache_path.exists():
+            return {}
+        data = torch.load(self.cache_path, weights_only=False)
+        metadata = dict(data.get('metadata', {}))
+        metadata.setdefault('label_count', len(data.get('labels', [])))
+        metadata.setdefault('category_count', len(data.get('categories', [])))
+        return metadata
 
     # ------------------------------------------------------------------
     # Classification
@@ -251,3 +284,25 @@ class LabelEmbeddingCache:
     @property
     def candidate_labels(self) -> List[str]:
         return self._data['labels']
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        if self._data is None:
+            return {}
+        metadata = dict(self._data.get('metadata', {}))
+        metadata.setdefault('label_count', len(self._data.get('labels', [])))
+        metadata.setdefault('category_count', len(self._data.get('categories', [])))
+        return metadata
+
+
+def build_cache_metadata(config: Dict[str, Any], candidate_labels: List[str]) -> Dict[str, Any]:
+    """Build provenance metadata to embed into a label cache."""
+    return {
+        'created_at': datetime.now(timezone.utc).isoformat(),
+        'model_id': config.get('model_id'),
+        'config_path': config.get('config_path'),
+        'vocab_path': config.get('vocab_path'),
+        'vocab_sha256': config.get('vocab_sha256'),
+        'cache_fingerprint': config.get('cache_fingerprint'),
+        'label_count': len(candidate_labels),
+    }

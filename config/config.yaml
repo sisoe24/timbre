@@ -25,7 +25,7 @@ model:
   # vocabulary.yaml          — 17,441 labels including UCS keyword synonyms
   #                            (original; kept as a reference / fallback)
   # Override on the CLI with: --vocab path/to/vocabulary.yaml
-  vocab_file: "vocabulary_refined.yaml"
+  vocab_file: "vocabulary.yaml"
 
   # Path to the pre-computed label embedding cache (.pt file).
   # Resolved relative to the project root.
