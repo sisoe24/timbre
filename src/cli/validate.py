@@ -18,16 +18,19 @@ Two modes:
 Usage
 -----
   # Audit a single file (Ollama):
-  python scripts/validate_clap.py --input outputs/metal_impact_01.json
+  timbre validate --input outputs/metal_impact_01.json
 
   # Audit a directory (OpenAI):
-  python scripts/validate_clap.py --input outputs/ --backend openai
+  timbre validate --input outputs/ --backend openai
+
+  # Override the model for the chosen backend:
+  timbre validate --input outputs/ --backend openai --model gpt-5.4-mini
 
   # Auto-correct mode:
-  python scripts/validate_clap.py --input outputs/ --mode autocorrect
+  timbre validate --input outputs/ --mode autocorrect
 
   # Save report to a custom path:
-  python scripts/validate_clap.py --input outputs/ --report out/validation_report.json
+  timbre validate --input outputs/ --report out/validation_report.json
 """
 
 from __future__ import annotations
@@ -41,6 +44,8 @@ from pathlib import Path
 import click
 from rich.table import Table
 from rich.console import Console
+
+from timbre.config_loader import load_config
 
 console = Console()
 logger = logging.getLogger(__name__)
@@ -246,8 +251,10 @@ def run_validation(
     model: str | None,
     mode: str,
     report: Path | None,
+    config: str | Path | None,
 ) -> None:
     """Run the validation workflow."""
+    cfg = load_config(config_path=config)
     default_models = {
         'ollama': 'llama3.1:8b',
         'openai': 'gpt-4o',
@@ -273,6 +280,8 @@ def run_validation(
         try:
             validation = query_fn(record, model=model)
             validation['file_name'] = file_name
+            validation['backend'] = backend
+            validation['model'] = model
             all_results.append(validation)
 
             score = validation.get('consistency_score', 0.0)
@@ -285,14 +294,23 @@ def run_validation(
 
         except Exception as e:
             console.print(f"[red]ERROR: {e}[/red]")
-            all_results.append({'file_name': file_name, 'error': str(e)})
+            all_results.append({
+                'file_name': file_name,
+                'backend': backend,
+                'model': model,
+                'error': str(e),
+            })
 
     # Print summary table
     console.print()
     print_summary(all_results)
 
     # Save report
-    report_path = report if report else input_path.parent / 'validation_report.json'
+    if report:
+        report_path = report
+    else:
+        output_root = Path(cfg['output'].get('output_dir', './out'))
+        report_path = output_root / 'validation' / 'validation_report.json'
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(all_results, f, indent=2)
@@ -329,7 +347,13 @@ def run_validation(
 @click.option(
     '--model',
     default=None,
-    help='Override the default model for the chosen backend',
+    help='Model name to use for the selected backend',
+)
+@click.option(
+    '--config',
+    '-c',
+    default=None,
+    help='Path to config.yaml (default: config/config.yaml)',
 )
 @click.option(
     '--mode',
@@ -348,6 +372,7 @@ def main(
     input_path: Path,
     backend: str,
     model: str | None,
+    config: str | None,
     mode: str,
     report: Path | None,
 ) -> None:
@@ -356,6 +381,7 @@ def main(
         input_path=input_path,
         backend=backend,
         model=model,
+        config=config,
         mode=mode,
         report=report,
     )
