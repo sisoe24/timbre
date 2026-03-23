@@ -230,6 +230,75 @@ To confirm MPS is active, look for this line in the output:
 
 ---
 
+## Running With Docker
+
+The project now supports a simple **CPU-only Linux** Docker image for distribution.
+The container exposes the existing `timbre` CLI directly, uses the bundled
+`config/config.yaml` and `config/vocabulary.yaml` by default, and downloads the
+CLAP model from Hugging Face on first run.
+
+### Build the image
+
+```bash
+docker build -t timbre .
+```
+
+### Analyze one file
+
+Mount input audio read-only and an output directory read-write:
+
+```bash
+docker run --rm \
+  -v "$PWD/samples:/data/in:ro" \
+  -v "$PWD/out:/data/out" \
+  timbre analyze /data/in/example.wav --output-dir /data/out
+```
+
+### Batch analyze a directory
+
+```bash
+docker run --rm \
+  -v "$PWD/samples:/data/in:ro" \
+  -v "$PWD/out:/data/out" \
+  timbre batch /data/in --output-dir /data/out
+```
+
+### Reuse the Hugging Face cache
+
+To avoid downloading the CLAP model on every fresh container run, mount a
+persistent cache directory:
+
+```bash
+docker run --rm \
+  -v "$PWD/samples:/data/in:ro" \
+  -v "$PWD/out:/data/out" \
+  -v "$PWD/.hf-cache:/root/.cache/huggingface" \
+  timbre analyze /data/in/example.wav --output-dir /data/out
+```
+
+### Use a custom config or vocabulary
+
+Mount your custom files and pass them through the existing CLI options:
+
+```bash
+docker run --rm \
+  -v "$PWD/samples:/data/in:ro" \
+  -v "$PWD/out:/data/out" \
+  -v "$PWD/config:/data/config:ro" \
+  timbre analyze /data/in/example.wav \
+    --output-dir /data/out \
+    --config /data/config/config.yaml \
+    --vocab /data/config/vocabulary.yaml
+```
+
+### Notes
+
+- This first Docker workflow is CPU-only; no CUDA or GPU container support is included yet.
+- The first run may take longer because model weights are downloaded at runtime.
+- The recommended contract is to mount inputs read-only, outputs writable, and optionally persist `/root/.cache/huggingface`.
+
+---
+
 ## Deploying to RunPod
 
 ### Requirements

@@ -1,0 +1,15 @@
+.git
+.gitignore
+.venv
+.cache
+.hf-cache/
+out
+outputs
+samples
+repos
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+.idea
+.vscode
