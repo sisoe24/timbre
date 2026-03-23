@@ -7,15 +7,9 @@ PORT=${2:?Usage: ./scripts/upload_pod.sh <host> <port>}
 
 rsync -avz \
   -e "ssh -p $PORT -i ~/.ssh/id_ed25519" \
-  --exclude '.git' \
-  --exclude '.venv' \
-  --exclude '.cache' \
-  --exclude 'out' \
-  --exclude 'other' \
-  --exclude 'repos' \
-  --exclude 'docs' \
-  --exclude '__pycache__' \
-  --exclude '*.pyc' \
-  --exclude '.DS_Store' \
+  --filter='+ *.py' \
+  --filter='+ *.sh' \
+  --filter='+ scripts/' \
+  --filter='- *' \
   ./ \
   "root@$HOST:~/audio_analyzer/"
