@@ -1,0 +1,109 @@
+flowchart TD
+
+    subgraph Foundation["🗄️ Foundation"]
+        SD["Schema Design"]
+        DB_FILES["Files Table\n(path, hash, format, size, modified_at)"]
+        DB_UCS["UCS Metadata Table\n(category, subcategory, descriptor, creator)"]
+        DB_AI["Embeddings Table\n(vector, model, tag scores)"]
+        DB_FTS["FTS5 Full-Text Index\n(fast keyword search)"]
+        MIG["Migration System\n(schema versioning)"]
+        DB[("SQLite3 Database")]
+
+        SD --> DB_FILES & DB_UCS & DB_AI & DB_FTS & MIG
+        DB_FILES & DB_UCS & DB_AI & DB_FTS & MIG --> DB
+    end
+
+    subgraph FileLayer["📂 File Layer"]
+        SCAN["Audio File Scanner"]
+        WATCH["Folder Watcher\n(detect new / changed files)"]
+        HASH["Deduplication\n(hash-based)"]
+        FMTS["Format Support\n(WAV, AIFF, MP3, FLAC …)"]
+
+        RUM["Read UCS Metadata"]
+        PARSE_FN["Parse Filename Tokens\n(UCS naming schema)"]
+        PARSE_EMB["Read Embedded Metadata\n(BWF, ID3, XMP)"]
+
+        SKIP["⚙ Skip if UCS Exists\n(toggleable)"]
+        OVR["⚙ Override UCS Metadata\n(toggleable)"]
+        REN["⚙ Rename with UCS Schema\n(toggleable)"]
+        REN_PRV["Preview Rename\nbefore applying"]
+        REN_UND["Undo / Rollback\nsupport"]
+
+        SCAN --> WATCH & HASH & FMTS & RUM
+        RUM --> PARSE_FN & PARSE_EMB
+        RUM --> SKIP & OVR & REN
+        REN --> REN_PRV & REN_UND
+    end
+
+    subgraph AILayer["🤖 AI System"]
+        AI["AI Audio Search"]
+
+        AIS["⚙ AI as a Service"]
+        LOCAL["Local Model\n(e.g. Ollama / whisper.cpp)"]
+        APIKEY["API Key\n(OpenAI / Anthropic / etc.)"]
+        FALLBACK["Fallback Strategy\n(graceful degradation)"]
+
+        PQ["Parse & Normalize Query"]
+        INTENT["Extract Intent & Filters\n(mood, category, duration)"]
+        EXPAND["Query Expansion\n(synonyms, related tags)"]
+
+        CLAP["CLAP Tagging Validation"]
+        THRESH["Confidence Threshold\nFiltering"]
+
+        PERF["Performance Strategy"]
+        LAZY["Lazy Indexing\n(index on first access)"]
+        BATCH["Batch Processing Queue"]
+        CACHE["Cache Embeddings to DB\n(avoid re-computation)"]
+        INCR["Incremental Re-index\non file change"]
+
+        AI --> AIS & PQ & PERF
+        AIS --> LOCAL & APIKEY & FALLBACK
+        PQ --> INTENT & EXPAND
+        EXPAND --> CLAP
+        CLAP --> THRESH
+        PERF --> LAZY & BATCH & CACHE & INCR
+    end
+
+    subgraph UILayer["🖥️ UI — PySide6"]
+        UI["Main UI"]
+
+        SRCH["Search Interface"]
+        SBAR["Text Search Bar"]
+        FILT["Filter Panel\n(category, duration, sample rate)"]
+        RESULTS["Results List\n(waveform preview + metadata)"]
+        PLAY["Audio Playback\n(in-app preview)"]
+
+        SETS["Settings Panel"]
+        SETS_UCS["UCS Toggles"]
+        SETS_AI["AI Service Config"]
+        SETS_FOLD["Folder Management\n(add / remove watched dirs)"]
+
+        STATUS["Progress & Status Bar\n(indexing progress, background tasks)"]
+
+        UI --> SRCH & SETS & STATUS
+        SRCH --> SBAR & FILT & RESULTS
+        RESULTS --> PLAY
+        SETS --> SETS_UCS & SETS_AI & SETS_FOLD
+    end
+
+    subgraph DistLayer["📦 Distribution"]
+        DIST["Package App\n(PyInstaller)"]
+        BUNDLE["Bundle Mode\n(single-file vs. directory)"]
+        PLATFORM["Platform Targets\n(macOS .app / Windows .exe)"]
+        SIGN["Code Signing\n(notarization on macOS)"]
+
+        DEP["Dependency Handling"]
+        BREW["Homebrew / system lib check\n(macOS)"]
+        GUIDE["User-Friendly Installer\n(step-by-step guide)"]
+        UPDATE["Auto-Update Mechanism\n(check for new releases)"]
+
+        DIST --> BUNDLE & PLATFORM & SIGN & DEP
+        DEP --> BREW & GUIDE & UPDATE
+    end
+
+    %% ── Cross-layer dependencies ──────────────────────────────────────────
+    DB      --> SCAN
+    DB      --> AI
+    RUM     --> UI
+    AI      --> UI
+    UI      --> DIST

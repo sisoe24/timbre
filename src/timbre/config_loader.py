@@ -34,8 +34,9 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_CONFIG_PATH = Path(__file__).parent.parent / 'config' / 'config.yaml'
-DEFAULT_VOCAB_PATH = Path(__file__).parent.parent / 'config' / 'vocabulary.yaml'
+ROOT = Path(__file__).parent.parent.parent
+DEFAULT_CONFIG_PATH = ROOT / 'config' / 'config.yaml'
+DEFAULT_VOCAB_PATH = ROOT / 'config' / 'vocabulary.yaml'
 
 
 def load_config(
@@ -123,10 +124,11 @@ def load_config(
     log_cfg = cfg.get('logging', {})
     ucs_cfg = cfg.get('ucs', {})
 
-    # Resolve label_cache_path relative to the config file's directory
+    # Resolve label_cache_path relative to the project root so generated
+    # artifacts can live outside the editable config directory.
     raw_cache_path = model_cfg.get('label_cache_path')
     if raw_cache_path:
-        label_cache_path = str(config_path.parent / raw_cache_path)
+        label_cache_path = str((ROOT / raw_cache_path).resolve())
     else:
         label_cache_path = None
 

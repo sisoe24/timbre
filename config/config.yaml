@@ -28,10 +28,11 @@ model:
   vocab_file: "vocabulary_refined.yaml"
 
   # Path to the pre-computed label embedding cache (.pt file).
+  # Resolved relative to the project root.
   # Built automatically on first run, or manually via:
   #   python timbre.py cache
   # Delete this file and re-run to rebuild after changing the vocabulary.
-  label_cache_path: "config/label_cache.pt"
+  label_cache_path: ".cache/label_cache.pt"
 
 # ---------------------------------------------------------------------------
 # Audio ingestion settings

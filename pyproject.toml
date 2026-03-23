@@ -40,7 +40,8 @@ timbre-cache = "cli.cache:main"
 [tool.poetry]
 packages = [
   { include = "timbre", from = "src" },
-  { include = "cli", from = "src" }
+  { include = "cli", from = "src" },
+  { include = "scripts" }
 ]
 
 [build-system]

@@ -18,7 +18,7 @@ console = Console()
     '--output-dir',
     '-o',
     default=None,
-    help='Directory to save output files (default: ./outputs/)',
+    help='Directory to save output files (default: ./out/)',
 )
 @click.option(
     '--config',

@@ -36,10 +36,10 @@ import os
 import sys
 import json
 import logging
-import argparse
 from typing import Any
 from pathlib import Path
 
+import click
 from rich import print as rprint
 from rich.table import Table
 from rich.console import Console
@@ -242,36 +242,28 @@ def print_summary(results: list[dict]) -> None:
 # Main
 # ---------------------------------------------------------------------------
 
-def main() -> None:
-    parser = argparse.ArgumentParser(
-        description='LLM-as-Judge validator for CLAP audio analysis records.'
-    )
-    parser.add_argument('--input', required=True,
-                        help='Path to a JSON file or directory of JSON files')
-    parser.add_argument('--backend', choices=['ollama', 'openai', 'anthropic'], default='ollama')
-    parser.add_argument('--model', default=None,
-                        help='Override the default model for the chosen backend')
-    parser.add_argument('--mode', choices=['audit', 'autocorrect'], default='audit')
-    parser.add_argument('--report', default=None,
-                        help='Path to save the full JSON report (optional)')
-    args = parser.parse_args()
-
-    # Default models per backend
+def run_validation(
+    input_path: Path,
+    backend: str,
+    model: str | None,
+    mode: str,
+    report: Path | None,
+) -> None:
+    """Run the validation workflow."""
     default_models = {
         'ollama': 'llama3.1:8b',
         'openai': 'gpt-4o',
         'anthropic': 'claude-sonnet-4-6',
     }
-    model = args.model or default_models[args.backend]
+    model = model or default_models[backend]
 
     query_fn = {'ollama': query_ollama, 'openai': query_openai,
-                'anthropic': query_anthropic}[args.backend]
+                'anthropic': query_anthropic}[backend]
 
-    input_path = Path(args.input)
     records = load_records(input_path)
 
     console.print(
-        f"\n[bold]Validating {len(records)} record(s) using {args.backend} / {model}[/bold]\n")
+        f"\n[bold]Validating {len(records)} record(s) using {backend} / {model}[/bold]\n")
 
     all_results = []
     corrected_records = []
@@ -289,7 +281,7 @@ def main() -> None:
             issues = len(validation.get('issues', []))
             console.print(f"score={score:.2f}  issues={issues}")
 
-            if args.mode == 'autocorrect':
+            if mode == 'autocorrect':
                 corrected = apply_corrections(record, validation)
                 corrected_records.append((path, corrected))
 
@@ -302,14 +294,14 @@ def main() -> None:
     print_summary(all_results)
 
     # Save report
-    report_path = Path(args.report) if args.report else input_path.parent / 'validation_report.json'
+    report_path = report if report else input_path.parent / 'validation_report.json'
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(all_results, f, indent=2)
     console.print(f"\n[green]Report saved:[/green] {report_path}")
 
     # Save corrected records
-    if args.mode == 'autocorrect' and corrected_records:
+    if mode == 'autocorrect' and corrected_records:
         corrected_dir = input_path.parent / 'corrected'
         corrected_dir.mkdir(exist_ok=True)
         for orig_path, corrected in corrected_records:
@@ -319,6 +311,56 @@ def main() -> None:
         console.print(f"[green]Corrected records saved to:[/green] {corrected_dir}/")
 
     console.print()
+
+
+@click.command()
+@click.option(
+    '--input',
+    'input_path',
+    required=True,
+    type=click.Path(exists=True, path_type=Path),
+    help='Path to a JSON file or directory of JSON files',
+)
+@click.option(
+    '--backend',
+    type=click.Choice(['ollama', 'openai', 'anthropic']),
+    default='ollama',
+    show_default=True,
+    help='LLM backend to use for validation',
+)
+@click.option(
+    '--model',
+    default=None,
+    help='Override the default model for the chosen backend',
+)
+@click.option(
+    '--mode',
+    type=click.Choice(['audit', 'autocorrect']),
+    default='audit',
+    show_default=True,
+    help='Validation mode',
+)
+@click.option(
+    '--report',
+    default=None,
+    type=click.Path(path_type=Path),
+    help='Path to save the full JSON report',
+)
+def main(
+    input_path: Path,
+    backend: str,
+    model: str | None,
+    mode: str,
+    report: Path | None,
+) -> None:
+    """LLM-as-Judge validator for CLAP audio analysis records."""
+    run_validation(
+        input_path=input_path,
+        backend=backend,
+        model=model,
+        mode=mode,
+        report=report,
+    )
 
 
 if __name__ == '__main__':

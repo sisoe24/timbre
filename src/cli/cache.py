@@ -46,7 +46,7 @@ def main(config: str, vocab: str | None, force: bool, batch_size: int) -> None:
     logger = logging.getLogger(__name__)
 
     cache_path = Path(
-        config.get('label_cache_path', PROJECT_ROOT / 'config' / 'label_cache.pt')
+        config.get('label_cache_path', PROJECT_ROOT / '.cache' / 'label_cache.pt')
     )
     candidate_labels = config['candidate_labels']
 
