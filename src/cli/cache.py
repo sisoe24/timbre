@@ -6,10 +6,6 @@ import time
 import logging
 from pathlib import Path
 
-import click
-
-from timbre.vocab_state import remember_vocab
-from timbre.config_loader import load_config, setup_logging
 from timbre.models.clap_tagger import CLAPTagger
 from timbre.models.label_cache import LabelEmbeddingCache, build_cache_metadata
 
@@ -71,47 +67,3 @@ def build_cache_for_config(
 
     logger.info('Done in %.1fs. Cache written to: %s', elapsed, cache_path)
     return cache_path
-
-
-@click.command()
-@click.option(
-    '--config',
-    default=str(PROJECT_ROOT / 'config' / 'config.yaml'),
-    help='Path to config.yaml (default: config/config.yaml)',
-)
-@click.option(
-    '--vocab',
-    default=None,
-    help='Path to vocabulary YAML (overrides config default)',
-)
-@click.option(
-    '--force',
-    is_flag=True,
-    default=False,
-    help='Rebuild cache even if it already exists',
-)
-@click.option(
-    '--batch-size',
-    type=int,
-    default=64,
-    help='Labels per text-encoder forward pass (reduce if OOM, default: 64)',
-)
-@click.option(
-    '--debug',
-    is_flag=True,
-    default=False,
-    help='Enable verbose debug logging, including third-party request logs',
-)
-def main(
-    config: str,
-    vocab: str | None,
-    force: bool,
-    batch_size: int,
-    debug: bool,
-) -> None:
-    """Pre-compute CLAP label embeddings for the UCS vocabulary."""
-
-    config = load_config(config_path=config, vocab_path=vocab)
-    setup_logging(config, debug=debug)
-    remember_vocab(config['vocab_path'], make_active=bool(vocab))
-    build_cache_for_config(config, force=force, batch_size=batch_size)

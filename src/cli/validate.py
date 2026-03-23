@@ -36,11 +36,9 @@ import os
 import sys
 import json
 import logging
-from typing import Any
 from pathlib import Path
 
 import click
-from rich import print as rprint
 from rich.table import Table
 from rich.console import Console
 
