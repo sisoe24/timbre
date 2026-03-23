@@ -24,11 +24,11 @@ Best for fuzzy, conceptual queries:
 
 ## Model Comparison
 
-| Task | Best Cloud | Best Local (Free) |
-|---|---|---|
-| Text-to-SQL | OpenAI `gpt-4o-mini` | `defog/sqlcoder2` via Ollama |
-| Embeddings | OpenAI `text-embedding-3-small` | `nomic-embed-text` via Ollama |
-| Validation / Reasoning | Claude Sonnet / `gpt-4o` | `llama3.1:8b` via Ollama |
+| Task                   | Best Cloud                      | Best Local (Free)             |
+| ---------------------- | ------------------------------- | ----------------------------- |
+| Text-to-SQL            | OpenAI `gpt-4o-mini`            | `defog/sqlcoder2` via Ollama  |
+| Embeddings             | OpenAI `text-embedding-3-small` | `nomic-embed-text` via Ollama |
+| Validation / Reasoning | Claude Sonnet / `gpt-4o`        | `llama3.1:8b` via Ollama      |
 
 **Local vs. Cloud trade-off:**
 

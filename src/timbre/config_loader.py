@@ -38,6 +38,13 @@ logger = logging.getLogger(__name__)
 ROOT = Path(__file__).parent.parent.parent
 DEFAULT_CONFIG_PATH = ROOT / 'config' / 'config.yaml'
 DEFAULT_VOCAB_PATH = ROOT / 'config' / 'vocabulary.yaml'
+NOISY_LOGGERS = [
+    'filelock',
+    'httpcore',
+    'httpx',
+    'huggingface_hub',
+    'urllib3',
+]
 
 
 def _sha256_file(path: Path) -> str:
@@ -206,9 +213,11 @@ def load_config(
     return runtime
 
 
-def setup_logging(config: dict) -> None:
+def setup_logging(config: dict, debug: bool = False) -> None:
     """Configure the root logger from the loaded config dict."""
     level = getattr(logging, config.get('log_level', 'INFO').upper(), logging.INFO)
+    if debug:
+        level = logging.DEBUG
     fmt = config.get(
         'log_format', '%(asctime)s [%(levelname)s] %(name)s: %(message)s'
     )
@@ -219,6 +228,10 @@ def setup_logging(config: dict) -> None:
         handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
 
     logging.basicConfig(level=level, format=fmt, handlers=handlers, force=True)
+
+    noisy_level = logging.DEBUG if debug else logging.WARNING
+    for logger_name in NOISY_LOGGERS:
+        logging.getLogger(logger_name).setLevel(noisy_level)
 
 
 def _load_yaml(path: Path) -> dict:

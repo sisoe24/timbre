@@ -58,6 +58,12 @@ console = Console()
     default=False,
     help='Suppress console output (only errors shown)',
 )
+@click.option(
+    '--debug',
+    is_flag=True,
+    default=False,
+    help='Enable verbose debug logging, including third-party request logs',
+)
 def main(
     audio_file: str,
     output_dir: str,
@@ -67,6 +73,7 @@ def main(
     save_markdown: bool,
     no_windowed: bool,
     quiet: bool,
+    debug: bool,
 ) -> None:
     """Analyze a single AUDIO_FILE and produce a catalog-ready description."""
 
@@ -79,7 +86,10 @@ def main(
     if no_windowed:
         cfg['use_windowed_analysis'] = False
 
-    setup_logging(cfg)
+    setup_logging(cfg, debug=debug)
+
+    vocab_file = Path(cfg['vocab_path']).name
+    vocab_sha = cfg['vocab_sha256'][:12]
 
     out_dir = Path(output_dir or cfg['output'].get('json_dir', './outputs/json'))
 
@@ -88,7 +98,8 @@ def main(
             Panel.fit(
                 f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
                 f"File: [green]{audio_file}[/green]\n"
-                f"Model: [yellow]{cfg['model_id']}[/yellow]",
+                f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
+                f"Vocab: [magenta]{vocab_file}[/magenta] [dim]({vocab_sha})[/dim]",
                 title='🎧 Analysis',
             )
         )
@@ -162,5 +173,7 @@ def _print_record(record) -> None:
         f"\n[dim]Duration: {record.metadata.duration_seconds:.2f}s  |  "
         f"Sample rate: {record.metadata.sample_rate_hz} Hz  |  "
         f"Format: {record.metadata.format.upper()}  |  "
-        f"Creator: {record.creator_id}  |  Source: {record.source_id}[/dim]"
+        f"Creator: {record.creator_id}  |  Source: {record.source_id}  |  "
+        f"Vocab: {Path(record.analysis_provenance.vocab_path).name} "
+        f"({record.analysis_provenance.vocab_sha256[:12]})[/dim]"
     )

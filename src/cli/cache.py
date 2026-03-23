@@ -38,11 +38,23 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
     default=64,
     help='Labels per text-encoder forward pass (reduce if OOM, default: 64)',
 )
-def main(config: str, vocab: str | None, force: bool, batch_size: int) -> None:
+@click.option(
+    '--debug',
+    is_flag=True,
+    default=False,
+    help='Enable verbose debug logging, including third-party request logs',
+)
+def main(
+    config: str,
+    vocab: str | None,
+    force: bool,
+    batch_size: int,
+    debug: bool,
+) -> None:
     """Pre-compute CLAP label embeddings for the UCS vocabulary."""
 
     config = load_config(config_path=config, vocab_path=vocab)
-    setup_logging(config)
+    setup_logging(config, debug=debug)
     logger = logging.getLogger(__name__)
 
     cache_path = Path(

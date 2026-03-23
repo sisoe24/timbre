@@ -71,6 +71,12 @@ console = Console()
     help='Skip files that fail to load/analyze (default: true)',
 )
 @click.option('--limit', default=None, type=int, help='Limit to the first N files')
+@click.option(
+    '--debug',
+    is_flag=True,
+    default=False,
+    help='Enable verbose debug logging, including third-party request logs',
+)
 def main(
     input_dir: str,
     output_dir: str,
@@ -84,6 +90,7 @@ def main(
     no_windowed: bool,
     skip_errors: bool,
     limit: int,
+    debug: bool,
 ) -> None:
     """Batch analyze all audio files in INPUT_DIR."""
 
@@ -99,7 +106,10 @@ def main(
     cfg = load_config(config_path=config, vocab_path=vocab)
     if no_windowed:
         cfg['use_windowed_analysis'] = False
-    setup_logging(cfg)
+    setup_logging(cfg, debug=debug)
+
+    vocab_file = Path(cfg['vocab_path']).name
+    vocab_sha = cfg['vocab_sha256'][:12]
 
     out_root = Path(output_dir or cfg['output'].get('output_dir', './outputs'))
     json_dir = out_root / 'json'
@@ -113,7 +123,8 @@ def main(
             f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
             f"Input: [green]{input_dir}[/green]\n"
             f"Output: [yellow]{out_root}[/yellow]\n"
-            f"Model: [yellow]{cfg['model_id']}[/yellow]",
+            f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
+            f"Vocab: [magenta]{vocab_file}[/magenta] [dim]({vocab_sha})[/dim]",
             title='🎧 Batch Analysis',
         )
     )
