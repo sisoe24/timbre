@@ -1,0 +1,28 @@
+repos:
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v6.0.0
+      hooks:
+          - id: trailing-whitespace
+          - id: double-quote-string-fixer
+          - id: end-of-file-fixer
+          - id: check-ast
+          - id: check-toml
+    - repo: https://github.com/hhatto/autopep8
+      rev: v2.3.2
+      hooks:
+          - id: autopep8
+            args: [
+              --global-config=pyproject.toml,
+              --max-line-length=100,
+              --in-place,
+            ]
+            verbose: true
+    - repo: https://github.com/pycqa/isort
+      rev: 8.0.1
+      hooks:
+        - id: isort
+          args: [
+            --length-sort,
+            --add-import=from __future__ import annotations,
+          ]
+          name: isort (python)

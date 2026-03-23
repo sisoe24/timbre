@@ -1,0 +1,48 @@
+[project]
+name = "timbre"
+version = "0.1.0"
+description = "Audio analysis CLI for generating catalog-friendly descriptions from audio clips."
+readme = "README.md"
+authors = [
+  { name = "Virgil Sisoe" }
+]
+
+[tool.isort]
+skip = ["__init__.py"]
+length_sort = true
+add_imports = "from __future__ import annotations"
+
+[tool.autopep8]
+max_line_length = 100
+
+requires-python = ">=3.10,<3.15"
+dependencies = [
+  "transformers>=4.40.0",
+  "accelerate>=0.27.0",
+  "huggingface-hub>=0.21.0",
+  "librosa>=0.10.1",
+  "soundfile>=0.12.1",
+  "audioread>=3.0.0",
+  "pydantic>=2.5.0",
+  "numpy>=1.24.0",
+  "pandas>=2.1.0",
+  "click>=8.1.0",
+  "rich>=13.7.0",
+  "pyyaml>=6.0.1",
+]
+
+[project.scripts]
+timbre = "cli.main:main"
+timbre-analyze = "cli.analyze:main"
+timbre-batch = "cli.batch:main"
+timbre-cache = "cli.cache:main"
+
+[tool.poetry]
+packages = [
+  { include = "timbre", from = "src" },
+  { include = "cli", from = "src" }
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

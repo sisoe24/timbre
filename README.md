@@ -94,8 +94,10 @@ Everything is designed for **cataloging accuracy** — no emotion analysis, no c
 
 ```
 audio_analyzer/
-├── analyze.py                  # CLI: single file analysis
-├── batch_process.py            # CLI: batch folder analysis
+├── timbre.py                   # Root CLI entrypoint
+├── analyze.py                  # Compatibility wrapper for single-file CLI
+├── batch_process.py            # Compatibility wrapper for batch CLI
+├── pyproject.toml              # Poetry dependency metadata
 ├── requirements.txt
 ├── setup_mac.sh                # macOS Silicon setup (M1/M2/M3/M4)
 ├── setup_runpod.sh             # RunPod GPU environment setup
@@ -105,24 +107,26 @@ audio_analyzer/
 │   └── vocabulary.yaml         # Controlled vocabulary (13 categories, ~194 labels)
 │
 ├── src/
-│   ├── config_loader.py        # YAML config loader + logging setup
-│   ├── pipeline.py             # Main orchestrator (AudioAnalysisPipeline)
-│   │
-│   ├── ingestion/
-│   │   └── audio_loader.py     # Load + validate + normalize audio files
-│   │
-│   ├── models/
-│   │   └── clap_tagger.py      # CLAP zero-shot classification wrapper
-│   │
-│   ├── analysis/
-│   │   ├── feature_extractor.py        # Acoustic features (librosa)
-│   │   ├── event_detector.py           # Sliding-window event detection
-│   │   └── description_synthesizer.py  # Natural language description builder
-│   │
-│   └── output/
-│       ├── schema.py           # Pydantic AudioAnalysisRecord model
-│       ├── serializer.py       # JSON / Markdown / CSV per-file output
-│       └── catalog_builder.py  # Multi-file catalog aggregation
+│   ├── cli/
+│   │   ├── main.py             # Top-level Click CLI with subcommands
+│   │   ├── analyze.py          # Single-file analysis command
+│   │   ├── batch.py            # Batch analysis command
+│   │   └── cache.py            # Label-cache builder command
+│   └── timbre/
+│       ├── config_loader.py    # YAML config loader + logging setup
+│       ├── pipeline.py         # Main orchestrator (AudioAnalysisPipeline)
+│       ├── ingestion/
+│       │   └── audio_loader.py # Load + validate + normalize audio files
+│       ├── models/
+│       │   └── clap_tagger.py  # CLAP zero-shot classification wrapper
+│       ├── analysis/
+│       │   ├── feature_extractor.py        # Acoustic features (librosa)
+│       │   ├── event_detector.py           # Sliding-window event detection
+│       │   └── description_synthesizer.py  # Natural language description builder
+│       └── output/
+│           ├── schema.py       # Pydantic AudioAnalysisRecord model
+│           ├── serializer.py   # JSON / Markdown / CSV per-file output
+│           └── catalog_builder.py  # Multi-file catalog aggregation
 │
 └── outputs/                    # Default output location
     ├── json/                   # Per-file JSON
@@ -168,26 +172,60 @@ This creates a `.venv` in the project root, installs ffmpeg via Homebrew,
 PyTorch with MPS support, all Python dependencies, and pre-downloads the
 CLAP model (~1.2 GB).
 
+### Optional: Poetry workflow
+
+Poetry metadata is included via `pyproject.toml`. Poetry manages the Python
+dependencies listed in `requirements.txt`, but **PyTorch is still intentionally
+left out of Poetry** because installation is platform-specific:
+
+- macOS: install torch separately before `poetry install`
+- RunPod/CUDA: install torch, torchaudio, and torchvision together with the
+  matching CUDA wheel index before `poetry install`
+
+Example:
+
+```bash
+cd audio_analyzer
+poetry install
+poetry run timbre analyze samples/0_sample.wav
+```
+
+The Makefile also supports Poetry directly:
+
+```bash
+make install
+make run USE_POETRY=1 FILE=samples/0_sample.wav
+make batch USE_POETRY=1 DIR=./samples
+```
+
+Poetry console scripts are also defined:
+
+```bash
+poetry run timbre analyze samples/0_sample.wav
+poetry run timbre batch ./samples
+poetry run timbre cache --force
+```
+
 ### Run
 
 Activate the virtual environment, then run:
 
 ```bash
 source .venv/bin/activate
-python analyze.py samples/0_sample.wav
-python batch_process.py ./samples/
+python timbre.py analyze samples/0_sample.wav
+python timbre.py batch ./samples/
 ```
 
 Or skip activation and use the venv Python directly:
 
 ```bash
-.venv/bin/python analyze.py samples/0_sample.wav
+.venv/bin/python timbre.py analyze samples/0_sample.wav
 ```
 
 To confirm MPS is active, look for this line in the output:
 
 ```
-[INFO] src.models.clap_tagger: Loading CLAP model: laion/larger_clap_general on mps
+[INFO] timbre.models.clap_tagger: Loading CLAP model: laion/larger_clap_general on mps
 ```
 
 ---
@@ -265,17 +303,17 @@ source .venv/bin/activate
 
 **Single file:**
 ```bash
-python analyze.py samples/0_sample.wav
+python timbre.py analyze samples/0_sample.wav
 ```
 
 **Single file with all outputs:**
 ```bash
-python analyze.py samples/0_sample.wav --output-dir ./outputs --markdown --full
+python timbre.py analyze samples/0_sample.wav --output-dir ./outputs --markdown --full
 ```
 
 **Batch — entire folder:**
 ```bash
-python batch_process.py ./samples/ --output-dir ./outputs
+python timbre.py batch ./samples/ --output-dir ./outputs
 ```
 
 ---
@@ -291,8 +329,8 @@ scp -P 22017 -i ~/.ssh/id_ed25519 -r ./audio_analyzer/src root@194.68.245.147:~/
 
 # Or re-upload specific files
 scp -P 22017 -i ~/.ssh/id_ed25519 \
-  ./audio_analyzer/src/models/clap_tagger.py \
-  root@194.68.245.147:~/audio_analyzer/src/models/
+  ./audio_analyzer/src/timbre/models/clap_tagger.py \
+  root@194.68.245.147:~/audio_analyzer/src/timbre/models/
 ```
 
 ---
@@ -347,7 +385,7 @@ scp -r runpod-audio:~/audio_analyzer/outputs ./outputs_from_pod
 ### Single file
 
 ```bash
-python analyze.py path/to/file.wav
+python timbre.py analyze path/to/file.wav
 ```
 
 Options:
@@ -363,7 +401,7 @@ Options:
 ### Batch folder
 
 ```bash
-python batch_process.py ./samples/
+python timbre.py batch ./samples/
 ```
 
 Options:

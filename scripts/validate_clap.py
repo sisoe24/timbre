@@ -1,0 +1,326 @@
+"""
+validate_clap.py
+----------------
+LLM-as-Judge validator for CLAP-generated UCS audio analysis records.
+
+Reads JSON output files produced by the audio analyzer and passes each
+record to an LLM to check for internal consistency, keyword quality,
+category correctness, and description accuracy.
+
+Supports two backends:
+  - Ollama  (local, free, requires Ollama server running)
+  - OpenAI  (cloud, requires OPENAI_API_KEY env var)
+
+Two modes:
+  - audit       : produces a validation report, original files untouched
+  - autocorrect : produces corrected JSON records alongside the report
+
+Usage
+-----
+  # Audit a single file (Ollama):
+  python scripts/validate_clap.py --input outputs/metal_impact_01.json
+
+  # Audit a directory (OpenAI):
+  python scripts/validate_clap.py --input outputs/ --backend openai
+
+  # Auto-correct mode:
+  python scripts/validate_clap.py --input outputs/ --mode autocorrect
+
+  # Save report to a custom path:
+  python scripts/validate_clap.py --input outputs/ --report out/validation_report.json
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+import json
+import logging
+import argparse
+from typing import Any
+from pathlib import Path
+
+from rich import print as rprint
+from rich.table import Table
+from rich.console import Console
+
+console = Console()
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Prompt
+# ---------------------------------------------------------------------------
+
+SYSTEM_PROMPT = """\
+You are an expert audio metadata reviewer specialising in the Universal Category System (UCS) v8.2.
+
+Your job is to review a single audio analysis record and check it for:
+1. Keyword relevance  — do the keywords accurately reflect the description and sound events?
+2. Keyword redundancy — are any keywords duplicates or near-duplicates? (e.g. "impact" and "metallic impact")
+3. Category / subcategory fit — does the UCS category and subcategory match the description?
+4. fx_name accuracy — does the short title (~25 chars) correctly summarise the sound?
+5. sound_events consistency — do the temporal events match what the description says?
+6. Confidence plausibility — is the confidence score reasonable given the description quality?
+
+UCS reference (top-level categories):
+  IMPACTS, WHOOSH, FOLEY, AMBIENCE, MECHANICAL, NATURE, HUMAN, DESIGNED,
+  MUSICAL, INTERFACE, VEHICLES, WEAPONS, EXPLOSIONS, ANIMALS, WATER, FIRE
+
+Return ONLY valid JSON with this exact structure (no markdown, no explanation outside the JSON):
+{
+  "file_name": "<same as input>",
+  "issues": ["<issue 1>", "<issue 2>"],
+  "suggested_keywords": ["<kw1>", "<kw2>"],
+  "suggested_category": "<UCS category>",
+  "suggested_subcategory": "<UCS subcategory>",
+  "suggested_fx_name": "<short title ~25 chars>",
+  "consistency_score": <float 0.0-1.0>,
+  "notes": "<brief overall comment>"
+}
+
+If nothing is wrong, return an empty issues list and consistency_score of 1.0.
+"""
+
+
+def build_user_message(record: dict) -> str:
+    """Format the record as a clean prompt message."""
+    relevant = {k: record.get(k) for k in [
+        'file_name', 'category', 'subcategory', 'cat_id', 'category_full',
+        'fx_name', 'description', 'keywords', 'sound_events', 'confidence',
+    ]}
+    return f"Please review this audio analysis record:\n\n```json\n{json.dumps(relevant, indent=2)}\n```"
+
+
+# ---------------------------------------------------------------------------
+# Backends
+# ---------------------------------------------------------------------------
+
+def query_ollama(record: dict, model: str = 'llama3.1:8b') -> dict:
+    """Send a record to Ollama and return the parsed validation result."""
+    try:
+        import ollama
+    except ImportError:
+        console.print('[red]ollama package not installed. Run: pip install ollama[/red]')
+        sys.exit(1)
+
+    response = ollama.chat(
+        model=model,
+        messages=[
+            {'role': 'system', 'content': SYSTEM_PROMPT},
+            {'role': 'user', 'content': build_user_message(record)},
+        ],
+        options={'temperature': 0.1},  # low temp for consistent structured output
+    )
+    return _parse_llm_response(response['message']['content'])
+
+
+def query_openai(record: dict, model: str = 'gpt-4o') -> dict:
+    """Send a record to OpenAI and return the parsed validation result."""
+    try:
+        from openai import OpenAI
+    except ImportError:
+        console.print('[red]openai package not installed. Run: pip install openai[/red]')
+        sys.exit(1)
+
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        console.print('[red]OPENAI_API_KEY environment variable not set.[/red]')
+        sys.exit(1)
+
+    client = OpenAI(api_key=api_key)
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {'role': 'system', 'content': SYSTEM_PROMPT},
+            {'role': 'user', 'content': build_user_message(record)},
+        ],
+        temperature=0.1,
+        response_format={'type': 'json_object'},  # enforces JSON output
+    )
+    return _parse_llm_response(response.choices[0].message.content)
+
+
+def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6') -> dict:
+    """Send a record to Anthropic Claude and return the parsed validation result."""
+    try:
+        import anthropic
+    except ImportError:
+        console.print('[red]anthropic package not installed. Run: pip install anthropic[/red]')
+        sys.exit(1)
+
+    api_key = os.environ.get('ANTHROPIC_API_KEY')
+    if not api_key:
+        console.print('[red]ANTHROPIC_API_KEY environment variable not set.[/red]')
+        sys.exit(1)
+
+    client = anthropic.Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=model,
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=[{'role': 'user', 'content': build_user_message(record)}],
+    )
+    return _parse_llm_response(response.content[0].text)
+
+
+def _parse_llm_response(raw: str) -> dict:
+    """Extract and parse JSON from the LLM response."""
+    raw = raw.strip()
+    # Strip markdown code fences if model ignored the instruction
+    if raw.startswith('```'):
+        lines = raw.split('\n')
+        raw = '\n'.join(lines[1:-1]) if lines[-1].strip() == '```' else '\n'.join(lines[1:])
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        logger.warning(f"Failed to parse LLM response as JSON: {e}\nRaw:\n{raw}")
+        return {'error': 'Failed to parse LLM response', 'raw': raw}
+
+
+# ---------------------------------------------------------------------------
+# File handling
+# ---------------------------------------------------------------------------
+
+def load_records(input_path: Path) -> list[tuple[Path, dict]]:
+    """Load one or more JSON records from a file or directory."""
+    records = []
+    if input_path.is_file():
+        with open(input_path) as f:
+            records.append((input_path, json.load(f)))
+    elif input_path.is_dir():
+        for p in sorted(input_path.glob('*.json')):
+            with open(p) as f:
+                records.append((p, json.load(f)))
+    else:
+        console.print(f"[red]Input path not found: {input_path}[/red]")
+        sys.exit(1)
+    return records
+
+
+def apply_corrections(original: dict, validation: dict) -> dict:
+    """Merge LLM suggestions back into a corrected record."""
+    corrected = original.copy()
+    if validation.get('suggested_keywords'):
+        corrected['keywords'] = validation['suggested_keywords']
+    if validation.get('suggested_category'):
+        corrected['category'] = validation['suggested_category']
+    if validation.get('suggested_subcategory'):
+        corrected['subcategory'] = validation['suggested_subcategory']
+    if validation.get('suggested_fx_name'):
+        corrected['fx_name'] = validation['suggested_fx_name']
+    return corrected
+
+
+# ---------------------------------------------------------------------------
+# Reporting
+# ---------------------------------------------------------------------------
+
+def print_summary(results: list[dict]) -> None:
+    """Print a rich summary table to the terminal."""
+    table = Table(title='CLAP Validation Summary', show_lines=True)
+    table.add_column('File', style='cyan', no_wrap=True)
+    table.add_column('Score', justify='center')
+    table.add_column('Issues', justify='center')
+    table.add_column('Notes', style='dim')
+
+    for r in results:
+        score = r.get('consistency_score', 0.0)
+        score_str = f"{score:.2f}"
+        color = 'green' if score >= 0.85 else ('yellow' if score >= 0.6 else 'red')
+        issues = len(r.get('issues', []))
+        table.add_row(
+            r.get('file_name', '?'),
+            f"[{color}]{score_str}[/{color}]",
+            str(issues),
+            r.get('notes', '')[:80],
+        )
+
+    console.print(table)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description='LLM-as-Judge validator for CLAP audio analysis records.'
+    )
+    parser.add_argument('--input', required=True,
+                        help='Path to a JSON file or directory of JSON files')
+    parser.add_argument('--backend', choices=['ollama', 'openai', 'anthropic'], default='ollama')
+    parser.add_argument('--model', default=None,
+                        help='Override the default model for the chosen backend')
+    parser.add_argument('--mode', choices=['audit', 'autocorrect'], default='audit')
+    parser.add_argument('--report', default=None,
+                        help='Path to save the full JSON report (optional)')
+    args = parser.parse_args()
+
+    # Default models per backend
+    default_models = {
+        'ollama': 'llama3.1:8b',
+        'openai': 'gpt-4o',
+        'anthropic': 'claude-sonnet-4-6',
+    }
+    model = args.model or default_models[args.backend]
+
+    query_fn = {'ollama': query_ollama, 'openai': query_openai,
+                'anthropic': query_anthropic}[args.backend]
+
+    input_path = Path(args.input)
+    records = load_records(input_path)
+
+    console.print(
+        f"\n[bold]Validating {len(records)} record(s) using {args.backend} / {model}[/bold]\n")
+
+    all_results = []
+    corrected_records = []
+
+    for path, record in records:
+        file_name = record.get('file_name', path.name)
+        console.print(f"  Validating [cyan]{file_name}[/cyan]...", end=' ')
+
+        try:
+            validation = query_fn(record, model=model)
+            validation['file_name'] = file_name
+            all_results.append(validation)
+
+            score = validation.get('consistency_score', 0.0)
+            issues = len(validation.get('issues', []))
+            console.print(f"score={score:.2f}  issues={issues}")
+
+            if args.mode == 'autocorrect':
+                corrected = apply_corrections(record, validation)
+                corrected_records.append((path, corrected))
+
+        except Exception as e:
+            console.print(f"[red]ERROR: {e}[/red]")
+            all_results.append({'file_name': file_name, 'error': str(e)})
+
+    # Print summary table
+    console.print()
+    print_summary(all_results)
+
+    # Save report
+    report_path = Path(args.report) if args.report else input_path.parent / 'validation_report.json'
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, 'w') as f:
+        json.dump(all_results, f, indent=2)
+    console.print(f"\n[green]Report saved:[/green] {report_path}")
+
+    # Save corrected records
+    if args.mode == 'autocorrect' and corrected_records:
+        corrected_dir = input_path.parent / 'corrected'
+        corrected_dir.mkdir(exist_ok=True)
+        for orig_path, corrected in corrected_records:
+            out_path = corrected_dir / orig_path.name
+            with open(out_path, 'w') as f:
+                json.dump(corrected, f, indent=2)
+        console.print(f"[green]Corrected records saved to:[/green] {corrected_dir}/")
+
+    console.print()
+
+
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.WARNING)
+    main()

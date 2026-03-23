@@ -1,0 +1,52 @@
+flowchart TD
+
+    subgraph Foundation["🗄️ Foundation"]
+        SD["Schema Design"]
+        DB[("SQLite3 Database")]
+        SD --> DB
+    end
+
+    subgraph FileLayer["📂 File Layer"]
+        SCAN["Audio File Scanner\n(index & watch folder)"]
+        RUM["Read UCS Metadata"]
+        SKIP["⚙️ Skip if UCS Exists\n(toggleable)"]
+        OVR["⚙️ Override UCS Metadata\n(toggleable)"]
+        REN["⚙️ Rename with UCS Schema\n(toggleable)"]
+        SCAN --> RUM
+        RUM --> SKIP
+        RUM --> OVR
+        RUM --> REN
+    end
+
+    subgraph AILayer["🤖 AI System"]
+        AI["AI Audio Search"]
+        AIS["⚙️ AI as a Service\n(Local model or API Key)"]
+        PQ["Parse & Normalize Query"]
+        CLAP["CLAP Tagging Validation"]
+        PERF["Performance Strategy\n(batch + caching for large libraries)"]
+        AI --> AIS
+        AI --> PQ
+        PQ --> CLAP
+        CLAP --> PERF
+    end
+
+    subgraph UILayer["🖥️ UI — PySide6"]
+        UI["Main UI"]
+        SRCH["Search Interface"]
+        SETS["Settings Panel\n(toggles, AI config)"]
+        UI --> SRCH
+        UI --> SETS
+    end
+
+    subgraph DistLayer["📦 Distribution"]
+        DIST["Package App\n(PyInstaller)"]
+        DEP["Dependency Handling\n(Homebrew check or\nuser-friendly installer guide)"]
+        DIST --> DEP
+    end
+
+    %% Cross-layer dependencies
+    DB --> SCAN
+    DB --> AI
+    RUM --> UI
+    AI --> UI
+    UI --> DIST
