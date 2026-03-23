@@ -32,7 +32,7 @@ max_line_length = 100
 
 [project.scripts]
 timbre = "cli.main:main"
-
+timbre-release = "scripts.release:main"
 
 [tool.poetry]
 packages = [
