@@ -79,6 +79,7 @@ Return ONLY valid JSON with this exact structure (no markdown, no explanation ou
   "suggested_category": "<UCS category>",
   "suggested_subcategory": "<UCS subcategory>",
   "suggested_fx_name": "<short title ~25 chars>",
+  "suggested_filename": "<UCS compliant filename if not already present>",
   "consistency_score": <float 0.0-1.0>,
   "notes": "<brief overall comment>"
 }
@@ -259,7 +260,7 @@ def run_validation(
     """Run the validation workflow."""
     cfg = load_config(config_path=config)
     default_models = {
-        'ollama': 'llama3.1:8b',
+        'ollama': 'qwen3.5',
         'openai': 'gpt-4o',
         'anthropic': 'claude-sonnet-4-6',
     }
