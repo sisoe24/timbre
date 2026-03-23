@@ -4,6 +4,7 @@ repos/
 
 # Outputs — generated at runtime
 out/
+dist/
 other/
 samples/*
 

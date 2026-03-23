@@ -1,6 +1,4 @@
 """
-validate_clap.py
-----------------
 LLM-as-Judge validator for CLAP-generated UCS audio analysis records.
 
 Reads JSON output files produced by the audio analyzer and passes each
@@ -50,6 +48,10 @@ from timbre.config_loader import load_config
 console = Console()
 logger = logging.getLogger(__name__)
 
+
+TEMP = 0.1
+"""Defualt model temperature for consistent output."""
+
 # ---------------------------------------------------------------------------
 # Prompt
 # ---------------------------------------------------------------------------
@@ -98,7 +100,7 @@ def build_user_message(record: dict) -> str:
 # Backends
 # ---------------------------------------------------------------------------
 
-def query_ollama(record: dict, model: str = 'llama3.1:8b') -> dict:
+def query_ollama(record: dict, model: str = 'llama3.1:8b', temp: float = TEMP) -> dict:
     """Send a record to Ollama and return the parsed validation result."""
     try:
         import ollama
@@ -112,12 +114,12 @@ def query_ollama(record: dict, model: str = 'llama3.1:8b') -> dict:
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': build_user_message(record)},
         ],
-        options={'temperature': 0.1},  # low temp for consistent structured output
+        options={'temperature': temp},  # low temp for consistent structured output
     )
     return _parse_llm_response(response['message']['content'])
 
 
-def query_openai(record: dict, model: str = 'gpt-4o') -> dict:
+def query_openai(record: dict, model: str = 'gpt-4o', temp: float = TEMP) -> dict:
     """Send a record to OpenAI and return the parsed validation result."""
     try:
         from openai import OpenAI
@@ -137,13 +139,13 @@ def query_openai(record: dict, model: str = 'gpt-4o') -> dict:
             {'role': 'system', 'content': SYSTEM_PROMPT},
             {'role': 'user', 'content': build_user_message(record)},
         ],
-        temperature=0.1,
+        temperature=temp,
         response_format={'type': 'json_object'},  # enforces JSON output
     )
     return _parse_llm_response(response.choices[0].message.content)
 
 
-def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6') -> dict:
+def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6', temp: float = TEMP) -> dict:
     """Send a record to Anthropic Claude and return the parsed validation result."""
     try:
         import anthropic
@@ -252,6 +254,7 @@ def run_validation(
     mode: str,
     report: Path | None,
     config: str | Path | None,
+    temp: float = TEMP,
 ) -> None:
     """Run the validation workflow."""
     cfg = load_config(config_path=config)
@@ -268,7 +271,7 @@ def run_validation(
     records = load_records(input_path)
 
     console.print(
-        f"\n[bold]Validating {len(records)} record(s) using {backend} / {model}[/bold]\n")
+        f"\n[bold]Validating {len(records)} record(s): {backend} / {model} / temp: {temp}[/bold]\n")
 
     all_results = []
     corrected_records = []
@@ -278,7 +281,7 @@ def run_validation(
         console.print(f"  Validating [cyan]{file_name}[/cyan]...", end=' ')
 
         try:
-            validation = query_fn(record, model=model)
+            validation = query_fn(record, model=model, temp=temp)
             validation['file_name'] = file_name
             validation['backend'] = backend
             validation['model'] = model
@@ -350,6 +353,11 @@ def run_validation(
     help='Model name to use for the selected backend',
 )
 @click.option(
+    '--temp',
+    default=0.1,
+    help='Model temperature if supported. Default 0.1',
+)
+@click.option(
     '--config',
     '-c',
     default=None,
@@ -375,6 +383,7 @@ def main(
     config: str | None,
     mode: str,
     report: Path | None,
+    temp: float = TEMP,
 ) -> None:
     """LLM-as-Judge validator for CLAP audio analysis records."""
     run_validation(
@@ -382,6 +391,7 @@ def main(
         backend=backend,
         model=model,
         config=config,
+        temp=temp,
         mode=mode,
         report=report,
     )
