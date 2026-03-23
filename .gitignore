@@ -5,6 +5,7 @@ repos/
 # Outputs — generated at runtime
 out/
 other/
+samples/*
 
 # Python cache
 __pycache__/
