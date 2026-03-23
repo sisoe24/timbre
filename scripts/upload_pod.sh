@@ -12,7 +12,8 @@ rsync -avz \
   --exclude '.cache' \
   --exclude 'out' \
   --exclude 'other' \
-  --exclude 'homebrew-timbre' \
+  --exclude 'repos' \
+  --exclude 'docs' \
   --exclude '__pycache__' \
   --exclude '*.pyc' \
   --exclude '.DS_Store' \
