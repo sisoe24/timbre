@@ -243,9 +243,61 @@ CLAP model from Hugging Face on first run.
 docker build -t timbre .
 ```
 
+### Export images to share with friends
+
+If you want to send the image directly instead of publishing it to a registry,
+export one tarball per CPU architecture:
+
+```bash
+make docker-export-arm64
+make docker-export-amd64
+```
+
+Or build both at once:
+
+```bash
+make docker-export-all
+```
+
+This produces:
+
+- `dist/timbre-arm64.tar` for Apple Silicon users
+- `dist/timbre-amd64.tar` for Intel/AMD users
+
+The easiest way to share it with non-technical users is to send:
+
+- the right tar file for their machine
+- [timbre-docker.sh](/Users/virgilsisoe/Developer/repos/ai/timbre/timbre-docker.sh)
+
+They can then load and run the image with simple commands:
+
+```bash
+bash timbre-docker.sh load
+bash timbre-docker.sh analyze /path/to/example.wav
+bash timbre-docker.sh batch /path/to/folder
+```
+
+If they prefer using Docker directly, they can still import the right file with:
+
+```bash
+docker load -i timbre-arm64.tar
+```
+
+or:
+
+```bash
+docker load -i timbre-amd64.tar
+```
+
 ### Analyze one file
 
 Mount input audio read-only and an output directory read-write:
+
+```bash
+bash timbre-docker.sh analyze /path/to/example.wav
+```
+
+The equivalent raw Docker command is:
 
 ```bash
 docker run --rm \
@@ -255,6 +307,12 @@ docker run --rm \
 ```
 
 ### Batch analyze a directory
+
+```bash
+bash timbre-docker.sh batch /path/to/folder
+```
+
+The equivalent raw Docker command is:
 
 ```bash
 docker run --rm \
@@ -296,6 +354,7 @@ docker run --rm \
 - This first Docker workflow is CPU-only; no CUDA or GPU container support is included yet.
 - The first run may take longer because model weights are downloaded at runtime.
 - The recommended contract is to mount inputs read-only, outputs writable, and optionally persist `/root/.cache/huggingface`.
+- Manual sharing is the simplest path right now: build locally, send the correct `dist/*.tar` file plus `timbre-docker.sh`, and let friends use the wrapper script instead of writing Docker commands by hand.
 
 ---
 
