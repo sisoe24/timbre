@@ -6,7 +6,7 @@ repos/
 out/
 dist/
 other/
-samples/*
+resources/*
 
 # Python cache
 __pycache__/
