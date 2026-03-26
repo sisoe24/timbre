@@ -51,6 +51,7 @@ def _build_record(profile_name: str, fingerprint: str) -> AudioAnalysisRecord:
             config_path='/tmp/config.yaml',
             vocab_path='/tmp/vocabulary.yaml',
             vocab_sha256='abcdef1234567890',
+            analysis_elapsed_seconds=1.234,
             profile_name=profile_name,
             profile_fingerprint=fingerprint,
             cache_path='/tmp/cache.pt',
@@ -70,8 +71,11 @@ def test_serializer_outputs_include_profile_provenance(tmp_path: Path) -> None:
 
     assert 'profile_name' in csv_text
     assert 'fast' in csv_text
+    assert 'analysis_elapsed_seconds' in csv_text
+    assert '1.234' in csv_text
     assert 'Profile' in markdown_text
     assert 'expfast123456' in markdown_text
+    assert 'Analysis Time' in markdown_text
 
 
 def test_catalog_groups_provenance_by_profile(tmp_path: Path) -> None:

@@ -205,6 +205,7 @@ def _record_catalog_block(r: AudioAnalysisRecord) -> List[str]:
         f"| **Profile** | `{r.analysis_provenance.profile_name}` |",
         f"| **Profile FP** | "
         f"`{r.analysis_provenance.profile_fingerprint or '—'}` |",
+        f"| **Analysis Time** | {r.analysis_provenance.analysis_elapsed_seconds:.2f}s |",
         f"| **Model** | `{r.analysis_provenance.model_id}` |",
         f"| **Config** | `{Path(r.analysis_provenance.config_path).name}` |",
         f"| **Vocabulary** | `{vocab_file}` |",

@@ -85,6 +85,7 @@ CSV_COLUMNS = [
     'file_name',
     'profile_name',
     'profile_fingerprint',
+    'analysis_elapsed_seconds',
     'cat_id',
     'category',
     'subcategory',
@@ -125,6 +126,9 @@ def save_csv(
             'file_name': r.file_name,
             'profile_name': r.analysis_provenance.profile_name,
             'profile_fingerprint': r.analysis_provenance.profile_fingerprint or '',
+            'analysis_elapsed_seconds': round(
+                r.analysis_provenance.analysis_elapsed_seconds, 3
+            ),
             'cat_id': r.cat_id,
             'category': r.category,
             'subcategory': r.subcategory,
@@ -230,6 +234,7 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         f"| **Profile** | `{r.analysis_provenance.profile_name}` |",
         f"| **Profile Fingerprint** | "
         f"`{r.analysis_provenance.profile_fingerprint or '—'}` |",
+        f"| **Analysis Time** | {r.analysis_provenance.analysis_elapsed_seconds:.2f}s |",
         f"| **Config Path** | `{r.analysis_provenance.config_path}` |",
         f"| **Vocabulary File** | `{Path(r.analysis_provenance.vocab_path).name}` |",
         f"| **Vocabulary SHA256** | `{r.analysis_provenance.vocab_sha256}` |",

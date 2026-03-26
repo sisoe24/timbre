@@ -53,6 +53,7 @@ class AnalysisProvenance(BaseModel):
     config_path: str
     vocab_path: str
     vocab_sha256: str
+    analysis_elapsed_seconds: float = Field(..., ge=0.0)
     profile_name: str = 'default'
     profile_fingerprint: str | None = None
     cache_path: str | None = None

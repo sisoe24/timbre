@@ -211,15 +211,21 @@ class AudioAnalysisPipeline:
             label_to_category_full=l2full,
         )
 
-        # --- 6. Assemble the output record -------------------------------
-        record = self._assemble_record(af, features, full_scores, events, description)
-
         elapsed = time.perf_counter() - t0
+        # --- 6. Assemble the output record -------------------------------
+        record = self._assemble_record(
+            af,
+            features,
+            full_scores,
+            events,
+            description,
+            analysis_elapsed_seconds=elapsed,
+        )
         logger.info(
             'Done: %s | conf=%.2f | %.1fs elapsed',
             af.file_name,
             record.confidence,
-            elapsed,
+            record.analysis_provenance.analysis_elapsed_seconds,
         )
 
         return record
@@ -325,6 +331,7 @@ class AudioAnalysisPipeline:
         full_scores: Dict[str, float],
         events: List[SoundEvent],
         description: DescriptionResult,
+        analysis_elapsed_seconds: float,
     ) -> AudioAnalysisRecord:
         """Build the final AudioAnalysisRecord from all pipeline outputs."""
 
@@ -367,6 +374,7 @@ class AudioAnalysisPipeline:
             config_path=self.config.get('config_path', 'unknown'),
             vocab_path=self.config.get('vocab_path', 'unknown'),
             vocab_sha256=self.config.get('vocab_sha256', 'unknown'),
+            analysis_elapsed_seconds=round(analysis_elapsed_seconds, 3),
             profile_name=self.config.get('profile_name', 'default'),
             profile_fingerprint=self.config.get('profile_fingerprint'),
             cache_path=self.config.get('label_cache_path'),

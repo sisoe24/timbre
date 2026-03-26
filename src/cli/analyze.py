@@ -246,13 +246,20 @@ def _print_record(record) -> None:
         table.add_row(label, f"{score:.3f}", record.category, f"[green]{bar}[/green]")
 
     console.print(table)
+    source_id = record.source_id or '—'
     console.print(
-        f"\n[dim]Duration: {record.metadata.duration_seconds:.2f}s  |  "
-        f"Sample rate: {record.metadata.sample_rate_hz} Hz  |  "
-        f"Format: {record.metadata.format.upper()}  |  "
-        f"Profile: {record.analysis_provenance.profile_name}  |  "
-        f"Creator: {record.creator_id}  |  Source: {record.source_id}  |  "
-        f"Vocab: {Path(record.analysis_provenance.vocab_path).name} "
+        f"\n[dim]Clip:[/dim] "
+        f"[dim]length {record.metadata.duration_seconds:.2f}s[/dim]  |  "
+        f"[dim]{record.metadata.sample_rate_hz} Hz[/dim]  |  "
+        f"[dim]{record.metadata.format.upper()}[/dim]\n"
+        f"[dim]Analysis:[/dim] "
+        f"[dim]completed in "
+        f"{record.analysis_provenance.analysis_elapsed_seconds:.2f}s[/dim]  |  "
+        f"[dim]profile {record.analysis_provenance.profile_name}[/dim]  |  "
+        f"[dim]creator {record.creator_id}[/dim]  |  "
+        f"[dim]source {source_id}[/dim]\n"
+        f"[dim]Vocab:[/dim] "
+        f"[dim]{Path(record.analysis_provenance.vocab_path).name} "
         f"({record.analysis_provenance.vocab_sha256[:12]})[/dim]"
     )
 
