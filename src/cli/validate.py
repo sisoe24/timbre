@@ -331,7 +331,11 @@ def run_validation(
     if report:
         report_path = report
     else:
-        report_path = resolve_output_paths(cfg)['validation_report']
+        report_path = _default_report_path(
+            resolve_output_paths(cfg)['validation_report'],
+            input_path,
+            records,
+        )
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(all_results, f, indent=2)
@@ -431,6 +435,23 @@ def _infer_profile_name(records: list[tuple[Path, dict]]) -> str | None:
     if len(names) == 1:
         return next(iter(names))
     return None
+
+
+def _default_report_path(
+    configured_report_path: Path,
+    input_path: Path,
+    records: list[tuple[Path, dict]],
+) -> Path:
+    report_dir = configured_report_path.parent
+
+    if len(records) == 1:
+        _, record = records[0]
+        source_name = record.get('file_name') or input_path.name
+        return report_dir / f'{Path(source_name).stem}.json'
+
+    stem = input_path.name if input_path.is_dir() else input_path.stem
+    stem = stem or configured_report_path.stem
+    return report_dir / f'{stem}_validation_report.json'
 
 
 if __name__ == '__main__':
