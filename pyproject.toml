@@ -1,6 +1,6 @@
 [project]
 name = "timbre"
-version = "0.7.0"
+version = "0.8.0"
 description = "Audio analysis CLI for generating catalog-friendly descriptions from audio clips."
 readme = "README.md"
 authors = [
