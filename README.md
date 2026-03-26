@@ -174,9 +174,11 @@ CLAP model (~1.2 GB).
 
 ### Optional: Poetry workflow
 
-Poetry metadata is included via `pyproject.toml`. Poetry manages the Python
-dependencies listed in `requirements.txt`, but **PyTorch is still intentionally
-left out of Poetry** because installation is platform-specific:
+`pyproject.toml` is the dependency source of truth. The checked-in
+`requirements.txt` is generated from Poetry during release with
+`poetry export --format requirements.txt --without-hashes --only main`.
+
+PyTorch installation is still platform-specific for setup:
 
 - macOS: install torch separately before `poetry install`
 - RunPod/CUDA: install torch, torchaudio, and torchvision together with the
@@ -456,7 +458,7 @@ The setup script will:
 2. Create a `.venv` virtual environment in the project root
 3. Install torch + torchaudio + torchvision together into the venv
 4. Install ffmpeg and libsndfile1
-5. Install all Python dependencies from `requirements.txt`
+5. Install all remaining Python dependencies from the release-generated `requirements.txt`
 6. Pre-download and cache the CLAP model (~1.2 GB)
 7. Verify everything works
 
@@ -819,6 +821,7 @@ To add new labels: edit `vocabulary.yaml` and re-run. No retraining needed.
 | **torch wheels** | Standard pip | CUDA-specific index | Standard pip |
 
 **Other notes:**
+- `pyproject.toml` is the source of truth for Python dependencies; `requirements.txt` is release-generated from Poetry
 - CLAP model size: ~1.2 GB (downloaded from HuggingFace Hub on first run, then cached)
 - `torch >= 2.6.0` required (CVE-2025-32434 — torch.load safety fix)
 - On RunPod: `torchvision` must be upgraded together with `torch` in a single pip command to avoid internal import conflicts in transformers

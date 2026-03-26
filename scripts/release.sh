@@ -22,6 +22,7 @@ Usage:
 
 Publishes a Timbre release end-to-end:
   - bumps version in pyproject.toml
+  - exports requirements.txt from Poetry
   - commits and pushes the source repo
   - creates and pushes the git tag
   - creates the GitHub release
@@ -76,6 +77,19 @@ ensure_repo_root_cwd() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "required command not found: $1"
+}
+
+ensure_poetry_export_command() {
+  if poetry export --help >/dev/null 2>&1; then
+    return
+  fi
+
+  log "poetry export is unavailable; installing poetry-plugin-export"
+  run_cmd poetry self add "poetry-plugin-export>=1.8"
+
+  if [[ $DRY_RUN -eq 0 ]]; then
+    poetry export --help >/dev/null 2>&1 || die "poetry export is still unavailable after installing poetry-plugin-export"
+  fi
 }
 
 ensure_clean_repo() {
@@ -161,6 +175,36 @@ path.write_text(updated)
 PY
 }
 
+export_requirements() {
+  local tmp_file
+  tmp_file=$(mktemp)
+
+  print_cmd poetry export \
+    --format requirements.txt \
+    --without-hashes \
+    --only main \
+    --output "$tmp_file"
+
+  if [[ $DRY_RUN -eq 1 ]]; then
+    rm -f "$tmp_file"
+    return
+  fi
+
+  poetry export \
+    --format requirements.txt \
+    --without-hashes \
+    --only main \
+    --output "$tmp_file"
+
+  {
+    printf '# Generated from pyproject.toml via poetry export during release.\n'
+    printf '# Do not edit requirements.txt by hand.\n\n'
+    cat "$tmp_file"
+  } > requirements.txt
+
+  rm -f "$tmp_file"
+}
+
 update_formula() {
   local formula_path=$1
   local tarball_url=$2
@@ -244,6 +288,7 @@ main() {
   require_command git
   require_command gh
   require_command python3
+  require_command poetry
   require_command curl
   require_command shasum
   [[ -d "$TAP_DIR" ]] || die "tap repo directory not found: ${TAP_DIR}"
@@ -254,6 +299,8 @@ main() {
   ensure_branch "$TAP_DIR" "$DEFAULT_BRANCH" "tap"
   ensure_origin_remote "." "source"
   ensure_origin_remote "$TAP_DIR" "tap"
+  run_cmd poetry check --lock
+  ensure_poetry_export_command
   run_cmd gh auth status
 
   CURRENT_STEP="version calculation"
@@ -270,10 +317,11 @@ main() {
   log "next version: ${version_tag}"
   log "tarball url: ${tarball_url}"
 
-  CURRENT_STEP="update source version"
-  MANUAL_RECOVERY_HINT="Revert or fix pyproject.toml if the version update is incomplete, then rerun."
+  CURRENT_STEP="update source release files"
+  MANUAL_RECOVERY_HINT="Revert or fix pyproject.toml or requirements.txt if the release update is incomplete, then rerun."
   update_pyproject_version "$new_version"
-  run_cmd git add pyproject.toml
+  export_requirements
+  run_cmd git add pyproject.toml requirements.txt
 
   CURRENT_STEP="commit source release"
   MANUAL_RECOVERY_HINT="Decide whether to keep or amend the source release commit before retrying."
