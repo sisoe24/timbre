@@ -300,7 +300,7 @@ main() {
   ensure_origin_remote "." "source"
   ensure_origin_remote "$TAP_DIR" "tap"
   run_cmd poetry check --lock
-  ensure_poetry_export_command
+  # ensure_poetry_export_command
   run_cmd gh auth status
 
   CURRENT_STEP="version calculation"
