@@ -203,7 +203,7 @@ Poetry console scripts are also defined:
 ```bash
 poetry run timbre analyze samples/0_sample.wav
 poetry run timbre batch ./samples
-poetry run timbre cache --force
+poetry run timbre vocab cache --force
 ```
 
 ### Run
@@ -221,6 +221,44 @@ Or skip activation and use the venv Python directly:
 ```bash
 .venv/bin/python timbre.py analyze samples/0_sample.wav
 ```
+
+To inspect the configured experiments:
+
+```bash
+python timbre.py analyze --list-experiments
+python timbre.py batch --list-experiments
+```
+
+To run with a specific experiment profile:
+
+```bash
+python timbre.py analyze samples/0_sample.wav --experiment precise
+python timbre.py batch ./samples --experiment fast
+```
+
+To run several experiments in one command:
+
+```bash
+python timbre.py analyze samples/0_sample.wav \
+  --experiment balanced \
+  --experiment precise \
+  --experiment conservative
+
+python timbre.py batch ./samples \
+  --experiment fast \
+  --experiment precise
+```
+
+To sweep every named experiment in the config:
+
+```bash
+python timbre.py analyze samples/0_sample.wav --all-experiments
+python timbre.py batch ./samples --all-experiments
+```
+
+Outputs are scoped automatically by experiment name. For example, with
+`--experiment precise` and the default config, artifacts are written under
+`./out/precise/`.
 
 To confirm MPS is active, look for this line in the output:
 
@@ -346,6 +384,7 @@ docker run --rm \
   timbre analyze /data/in/example.wav \
     --output-dir /data/out \
     --config /data/config/config.yaml \
+    --experiment precise \
     --vocab /data/config/vocabulary.yaml
 ```
 
@@ -521,6 +560,9 @@ Options:
 | Flag | Description |
 |---|---|
 | `--output-dir` / `-o` | Directory to save output files |
+| `--experiment` | Named experiment profile from `config.yaml` (repeatable) |
+| `--all-experiments` | Run every named profile from `config.yaml` |
+| `--list-experiments` | Print configured experiments and exit |
 | `--markdown` | Also save a per-file Markdown review report |
 | `--full` | Save full JSON (includes metadata + acoustics) |
 | `--no-windowed` | Disable sliding-window event detection (faster) |
@@ -537,12 +579,68 @@ Options:
 | Flag | Description |
 |---|---|
 | `--output-dir` / `-o` | Root output directory |
+| `--experiment` | Named experiment profile from `config.yaml` (repeatable) |
+| `--all-experiments` | Run every named profile from `config.yaml` |
+| `--list-experiments` | Print configured experiments and exit |
 | `--catalog` | Generate `catalog.md` (default: on) |
 | `--csv` | Generate `catalog.csv` (default: on) |
 | `--markdown` | Save per-file Markdown reports |
 | `--full` | Full JSON output per file |
 | `--limit N` | Only process first N files (useful for testing) |
 | `--no-windowed` | Disable sliding-window event detection |
+
+### Experiment profiles
+
+Experiments let you A/B CLAP inference settings without editing code.
+The runtime config is selected from `config/config.yaml`, merged with the base
+settings, and stamped into every output record as provenance.
+
+Common workflow:
+
+```bash
+# See the available profiles
+python timbre.py analyze --list-experiments
+
+# Run the **same** file with two profiles
+python timbre.py analyze samples/0_sample.wav --experiment balanced
+python timbre.py analyze samples/0_sample.wav --experiment precise
+
+# Run several profiles in one pass
+python timbre.py analyze samples/0_sample.wav \
+  --experiment balanced \
+  --experiment precise \
+  --experiment sensitive
+
+# Batch compare two profiles across a folder
+python timbre.py batch ./samples --experiment fast
+python timbre.py batch ./samples --experiment precise
+
+# Sweep every configured profile
+python timbre.py batch ./samples --all-experiments
+```
+
+With the default output settings, this produces separate directories such as:
+
+```text
+out/
+  balanced/
+  fast/
+  precise/
+```
+
+Each JSON, Markdown, CSV, and catalog entry includes:
+
+- `analysis_provenance.experiment_name`
+- `analysis_provenance.experiment_fingerprint`
+- `analysis_provenance.config_path`
+
+CLI overrides still win over the experiment. For example,
+`--experiment precise --no-windowed` disables windowed analysis for that run and
+produces a different experiment fingerprint in the output provenance.
+
+When multiple requested experiments share the same model and label cache,
+the CLI reuses the already-loaded CLAP resources between runs so you do not
+pay the model load cost repeatedly.
 
 ---
 
@@ -594,21 +692,60 @@ footsteps_01.wav,4.50,movement,footsteps on gravel,0.78,Footsteps on gravel...,.
 ### `config/config.yaml`
 
 ```yaml
-model:
-  model_id: "laion/larger_clap_general"
-  device: null        # auto-detect: cuda → mps → cpu
-  fp16: true          # float16 on GPU — reduces VRAM usage
+default_experiment: "balanced"
 
-analysis:
-  use_windowed_analysis: true
-  window_seconds: 2.0
-  hop_seconds: 0.5
-  min_confidence: 0.25
+base:
+  model:
+    model_id: "laion/larger_clap_general"
+    device: null
+    fp16: true
+    vocab_file: "vocabulary.yaml"
+    label_cache_path: ".cache/label_cache.pt"
 
-output:
-  output_dir: "./outputs"
-  save_per_file_markdown: true
-  full_json: false
+  analysis:
+    use_windowed_analysis: true
+    window_seconds: 2.0
+    hop_seconds: 0.5
+    min_confidence: 0.25
+    top_k_categories: 5
+
+  output:
+    output_dir: "./out"
+    save_per_file_markdown: true
+    full_json: false
+
+experiments:
+  balanced: {}
+  fast:
+    analysis:
+      hop_seconds: 1.0
+      top_k_categories: 3
+  precise:
+    analysis:
+      hop_seconds: 0.25
+      min_confidence: 0.20
+      top_k_categories: 7
+```
+
+Experiment overrides currently target CLAP inference behavior and related
+pipeline settings, including:
+
+- `model.model_id`
+- `model.device`
+- `model.fp16`
+- `analysis.use_windowed_analysis`
+- `analysis.windowed_min_duration`
+- `analysis.window_seconds`
+- `analysis.hop_seconds`
+- `analysis.min_confidence`
+- `analysis.top_k_categories`
+
+To run a specific profile:
+
+```bash
+python timbre.py analyze samples/0_sample.wav --experiment precise
+python timbre.py batch ./samples --experiment fast
+python timbre.py validate --input ./out/precise/json --experiment precise
 ```
 
 ### `config/vocabulary.yaml`

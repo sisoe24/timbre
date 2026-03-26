@@ -25,10 +25,12 @@ This is flattened into four parallel lookup dicts:
 
 from __future__ import annotations
 
+import copy
+import json
 import hashlib
 import logging
 import logging.handlers
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from pathlib import Path
 
 import yaml
@@ -48,6 +50,21 @@ NOISY_LOGGERS = [
     'urllib3',
 ]
 
+CONFIG_SECTION_KEYS = ('model', 'audio', 'analysis', 'output', 'logging', 'ucs')
+EXPERIMENT_FINGERPRINT_KEYS = (
+    'model_id',
+    'device',
+    'fp16',
+    'target_sr',
+    'use_windowed_analysis',
+    'windowed_min_duration',
+    'window_seconds',
+    'hop_seconds',
+    'min_confidence',
+    'top_k_categories',
+    'vocab_sha256',
+)
+
 
 def _sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -61,9 +78,145 @@ def _fingerprinted_cache_path(base_path: Path, fingerprint: str) -> Path:
     return base_path.with_name(f"{base_path.stem}_{fingerprint}{base_path.suffix}")
 
 
+def _deep_merge_dicts(base: dict, override: dict) -> dict:
+    merged = copy.deepcopy(base)
+    for key, value in override.items():
+        if isinstance(value, dict) and isinstance(merged.get(key), dict):
+            merged[key] = _deep_merge_dicts(merged[key], value)
+        else:
+            merged[key] = copy.deepcopy(value)
+    return merged
+
+
+def _split_config_document(raw_cfg: dict) -> tuple[dict, dict, str | None]:
+    experiments = raw_cfg.get('experiments') or {}
+    if not isinstance(experiments, dict):
+        raise ValueError("'experiments' must be a mapping of experiment names to overrides.")
+
+    default_experiment = raw_cfg.get('default_experiment')
+    if 'base' in raw_cfg:
+        base_cfg = raw_cfg.get('base') or {}
+        if not isinstance(base_cfg, dict):
+            raise ValueError("'base' must be a mapping when present in config.yaml.")
+    else:
+        base_cfg = {
+            key: copy.deepcopy(raw_cfg.get(key, {}))
+            for key in CONFIG_SECTION_KEYS
+            if key in raw_cfg
+        }
+
+    return base_cfg, experiments, default_experiment
+
+
+def list_experiments(config_path: Optional[str | Path] = None) -> List[str]:
+    """Return the configured experiment names in declaration order."""
+    resolved_config_path = Path(config_path or DEFAULT_CONFIG_PATH)
+    cfg = _load_yaml(resolved_config_path)
+    _, experiments, _ = _split_config_document(cfg)
+    return list(experiments.keys())
+
+
+def resolve_requested_experiments(
+    config_path: Optional[str | Path] = None,
+    requested_experiments: Optional[List[str] | tuple[str, ...]] = None,
+    all_experiments: bool = False,
+) -> List[str | None]:
+    """
+    Resolve which experiments a CLI invocation should run.
+
+    Returns a list of experiment names. `None` means "use default selection".
+    """
+    requested = list(requested_experiments or [])
+
+    if all_experiments and requested:
+        raise ValueError('Use either --experiment or --all-experiments, not both.')
+
+    if all_experiments:
+        names = list_experiments(config_path)
+        if not names:
+            raise ValueError('No named experiments configured in config.yaml.')
+        return names
+
+    if not requested:
+        return [None]
+
+    # Preserve order while dropping duplicates.
+    return list(dict.fromkeys(requested))
+
+
+def resolve_effective_config(
+    raw_cfg: dict,
+    experiment_name: Optional[str] = None,
+) -> tuple[dict, str, str, List[str]]:
+    """
+    Resolve the effective config document for the selected experiment.
+
+    Returns:
+        merged_cfg, resolved_experiment_name, experiment_source, available_experiments
+    """
+    base_cfg, experiments, default_experiment = _split_config_document(raw_cfg)
+    available_experiments = list(experiments.keys())
+
+    if experiment_name is not None:
+        if experiment_name not in experiments:
+            raise ValueError(
+                f"Unknown experiment '{experiment_name}'. "
+                f"Available experiments: {', '.join(available_experiments) or 'none'}"
+            )
+        return (
+            _deep_merge_dicts(base_cfg, experiments[experiment_name]),
+            experiment_name,
+            'explicit',
+            available_experiments,
+        )
+
+    if default_experiment:
+        if default_experiment not in experiments:
+            raise ValueError(
+                f"default_experiment '{default_experiment}' is not defined in 'experiments'."
+            )
+        return (
+            _deep_merge_dicts(base_cfg, experiments[default_experiment]),
+            default_experiment,
+            'default',
+            available_experiments,
+        )
+
+    return base_cfg, 'default', 'default', available_experiments
+
+
+def _compute_experiment_fingerprint(runtime: dict) -> str:
+    payload = {
+        key: runtime.get(key)
+        for key in EXPERIMENT_FINGERPRINT_KEYS
+    }
+    stable_json = json.dumps(payload, sort_keys=True, separators=(',', ':'))
+    return _sha256_text(stable_json)[:12]
+
+
+def refresh_runtime_metadata(runtime: dict) -> dict:
+    """Refresh derived cache and experiment metadata after runtime overrides."""
+    cache_fingerprint = _sha256_text(
+        f"{runtime.get('model_id')}:{runtime.get('vocab_sha256')}"
+    )[:12]
+    runtime['cache_fingerprint'] = cache_fingerprint
+
+    base_cache_path = runtime.get('label_cache_base_path')
+    if base_cache_path:
+        runtime['label_cache_path'] = str(
+            _fingerprinted_cache_path(Path(base_cache_path), cache_fingerprint)
+        )
+    else:
+        runtime['label_cache_path'] = None
+
+    runtime['experiment_fingerprint'] = _compute_experiment_fingerprint(runtime)
+    return runtime
+
+
 def load_config(
     config_path: Optional[str | Path] = None,
     vocab_path: Optional[str | Path] = None,
+    experiment_name: Optional[str] = None,
 ) -> dict:
     """
     Load and merge configuration + vocabulary into a single dict.
@@ -120,7 +273,10 @@ def load_config(
         vocab_source = 'explicit'
     vocab_path = Path(vocab_path)
 
-    cfg = _load_yaml(config_path)
+    raw_cfg = _load_yaml(config_path)
+    cfg, resolved_experiment_name, experiment_source, available_experiments = (
+        resolve_effective_config(raw_cfg, experiment_name=experiment_name)
+    )
     vocab = _load_yaml(vocab_path)
 
     # --- Flatten UCS vocabulary into lookup dicts -------------------------
@@ -161,16 +317,14 @@ def load_config(
     vocab_sha256 = _sha256_file(resolved_vocab_path)
     cache_fingerprint = _sha256_text(f'{model_id}:{vocab_sha256}')[:12]
 
-    # Resolve label_cache_path relative to the project root so generated
-    # artifacts can live outside the editable config directory.
     raw_cache_path = model_cfg.get('label_cache_path')
     if raw_cache_path:
         cache_base_path = (PROJECT_ROOT / raw_cache_path).resolve()
-        label_cache_path = str(_fingerprinted_cache_path(cache_base_path, cache_fingerprint))
         label_cache_base_path = str(cache_base_path)
+        label_cache_path = str(_fingerprinted_cache_path(cache_base_path, cache_fingerprint))
     else:
-        label_cache_path = None
         label_cache_base_path = None
+        label_cache_path = None
 
     runtime = {
         # Model
@@ -180,6 +334,9 @@ def load_config(
         'label_cache_path': label_cache_path,
         'label_cache_base_path': label_cache_base_path,
         'cache_fingerprint': cache_fingerprint,
+        'experiment_name': resolved_experiment_name,
+        'experiment_source': experiment_source,
+        'available_experiments': available_experiments,
         'config_path': str(resolved_config_path),
         'vocab_path': str(resolved_vocab_path),
         'vocab_file': resolved_vocab_path.name,
@@ -216,9 +373,11 @@ def load_config(
         ),
         'log_file': log_cfg.get('log_file', None),
     }
+    refresh_runtime_metadata(runtime)
 
     logger.debug(
-        'Config loaded: %d candidate labels across %d UCS categories.',
+        'Config loaded: experiment=%s labels=%d categories=%d.',
+        runtime['experiment_name'],
         len(candidate_labels),
         len(set(label_to_category.values())),
     )

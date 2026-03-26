@@ -18,7 +18,7 @@ console = Console()
 
 
 @click.command()
-@click.argument('input_dir', type=click.Path(exists=True, file_okay=False))
+@click.argument('input_dir', required=False, type=click.Path(exists=True, file_okay=False))
 @click.option(
     '--output-dir',
     '-o',
@@ -27,6 +27,23 @@ console = Console()
 )
 @click.option('--config', '-c', default=None, help='Path to config.yaml')
 @click.option('--vocab', '-v', default=None, help='Path to vocabulary.yaml')
+@click.option(
+    '--experiment',
+    multiple=True,
+    help='Named experiment profile to load from config.yaml. Repeat to run several.',
+)
+@click.option(
+    '--all-experiments',
+    is_flag=True,
+    default=False,
+    help='Run all named experiment profiles from config.yaml',
+)
+@click.option(
+    '--list-experiments',
+    is_flag=True,
+    default=False,
+    help='List experiment names from config.yaml and exit',
+)
 @click.option(
     '--recursive',
     '-r',
@@ -80,10 +97,13 @@ console = Console()
     help='Enable verbose debug logging, including third-party request logs',
 )
 def main(
-    input_dir: str,
+    input_dir: str | None,
     output_dir: str,
     config: str,
     vocab: str,
+    experiment: tuple[str, ...],
+    all_experiments: bool,
+    list_experiments: bool,
     recursive: bool,
     catalog: bool,
     save_csv: bool,
@@ -97,7 +117,12 @@ def main(
     """Batch analyze all audio files in INPUT_DIR."""
 
     from timbre.pipeline import AudioAnalysisPipeline
+    from timbre.output_paths import resolve_output_paths
     from timbre.config_loader import load_config, setup_logging
+    from timbre.config_loader import \
+        list_experiments as list_config_experiments
+    from timbre.config_loader import (refresh_runtime_metadata,
+                                      resolve_requested_experiments)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
     from timbre.output.serializer import save_json_batch
@@ -105,34 +130,16 @@ def main(
     from timbre.output.catalog_builder import (build_catalog_csv,
                                                build_catalog_markdown)
 
-    cfg = load_config(config_path=config, vocab_path=vocab)
-    if no_windowed:
-        cfg['use_windowed_analysis'] = False
-    setup_logging(cfg, debug=debug)
-    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+    if list_experiments:
+        names = list_config_experiments(config)
+        if names:
+            console.print('\n'.join(names))
+        else:
+            console.print('[yellow]No named experiments configured.[/yellow]')
+        return
 
-    vocab_file = Path(cfg['vocab_path']).name
-    vocab_sha = cfg['vocab_sha256'][:12]
-    vocab_source = cfg['vocab_source']
-
-    out_root = Path(output_dir or cfg['output'].get('output_dir', './outputs'))
-    json_dir = out_root / 'json'
-    md_dir = out_root / 'markdown'
-    catalog_md = out_root / 'catalog.md'
-    catalog_csv_path = out_root / 'catalog.csv'
-    batch_json_path = out_root / 'batch_results.json'
-
-    console.print(
-        Panel.fit(
-            f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
-            f"Input: [green]{input_dir}[/green]\n"
-            f"Output: [yellow]{out_root}[/yellow]\n"
-            f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-            f"Vocab: [magenta]{vocab_file}[/magenta] "
-            f"[dim]({vocab_sha}, {vocab_source})[/dim]",
-            title='🎧 Batch Analysis',
-        )
-    )
+    if input_dir is None:
+        raise click.UsageError('Missing argument: INPUT_DIR')
 
     audio_paths = discover_audio_files(input_dir, recursive=recursive)
     if not audio_paths:
@@ -144,60 +151,120 @@ def main(
 
     console.print(f"\nFound [bold]{len(audio_paths)}[/bold] audio files.\n")
 
-    pipeline = AudioAnalysisPipeline(cfg)
-    with console.status('Loading CLAP model…'):
-        pipeline.load_model()
-    console.print('[green]✓[/green] Model loaded.\n')
+    try:
+        experiments_to_run = resolve_requested_experiments(
+            config_path=config,
+            requested_experiments=experiment,
+            all_experiments=all_experiments,
+        )
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
 
-    records = []
-    failed = 0
+    shared_resources: dict[tuple, tuple] = {}
 
-    with Progress(
-        SpinnerColumn(),
-        TextColumn('[progress.description]{task.description}'),
-        BarColumn(),
-        MofNCompleteColumn(),
-        TimeElapsedColumn(),
-        console=console,
-    ) as progress:
-        task = progress.add_task('Analyzing…', total=len(audio_paths))
+    for experiment_name in experiments_to_run:
+        cfg = load_config(
+            config_path=config,
+            vocab_path=vocab,
+            experiment_name=experiment_name,
+        )
+        if no_windowed:
+            cfg['use_windowed_analysis'] = False
+            refresh_runtime_metadata(cfg)
+        setup_logging(cfg, debug=debug)
+        remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
 
-        for path in audio_paths:
-            progress.update(task, description=f"[cyan]{Path(path).name}[/cyan]")
-            try:
-                record = pipeline.analyze_file(path)
-                records.append(record)
-                save_json(record, json_dir, full=full)
-                if save_per_file_markdown:
-                    save_md(record, md_dir)
-            except Exception as exc:
-                failed += 1
-                if not skip_errors:
-                    raise
-                console.print(f"[yellow]⚠ Skipped {Path(path).name}: {exc}[/yellow]")
-            progress.advance(task)
+        vocab_file = Path(cfg['vocab_path']).name
+        vocab_sha = cfg['vocab_sha256'][:12]
+        vocab_source = cfg['vocab_source']
 
-    console.print(
-        f"\n[bold green]✓ Analyzed {len(records)}/{len(audio_paths)} files[/bold green]"
-        + (f" ([yellow]{failed} failed[/yellow])" if failed else '')
-    )
+        output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
+        out_root = output_paths['root']
+        json_dir = output_paths['json_dir']
+        md_dir = output_paths['markdown_dir']
+        catalog_md = output_paths['catalog_markdown']
+        catalog_csv_path = output_paths['catalog_csv']
+        batch_json_path = output_paths['batch_json']
 
-    if not records:
-        console.print('[red]No records produced. Exiting.[/red]')
-        sys.exit(1)
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
+                f"Input: [green]{input_dir}[/green]\n"
+                f"Output: [yellow]{out_root}[/yellow]\n"
+                f"Experiment: [blue]{cfg['experiment_name']}[/blue] "
+                f"[dim]({cfg['experiment_fingerprint']})[/dim]\n"
+                f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
+                f"Vocab: [magenta]{vocab_file}[/magenta] "
+                f"[dim]({vocab_sha}, {vocab_source})[/dim]",
+                title='🎧 Batch Analysis',
+            )
+        )
 
-    save_json_batch(records, batch_json_path, full=full)
-    console.print(f"[dim]Batch JSON → {batch_json_path}[/dim]")
+        pipeline = AudioAnalysisPipeline(cfg)
+        resource_key = _resource_cache_key(cfg)
+        if resource_key in shared_resources:
+            pipeline.tagger, pipeline.cache = shared_resources[resource_key]
+            console.print('[green]✓[/green] Reusing loaded CLAP model.\n')
+        else:
+            with console.status('Loading CLAP model…'):
+                pipeline.load_model()
+            console.print('[green]✓[/green] Model loaded.\n')
+            shared_resources[resource_key] = (pipeline.tagger, pipeline.cache)
 
-    if catalog:
-        build_catalog_markdown(records, catalog_md)
-        console.print(f"[dim]Catalog   → {catalog_md}[/dim]")
+        records = []
+        failed = 0
 
-    if save_csv:
-        build_catalog_csv(records, catalog_csv_path)
-        console.print(f"[dim]CSV       → {catalog_csv_path}[/dim]")
+        with Progress(
+            SpinnerColumn(),
+            TextColumn('[progress.description]{task.description}'),
+            BarColumn(),
+            MofNCompleteColumn(),
+            TimeElapsedColumn(),
+            console=console,
+        ) as progress:
+            task = progress.add_task(
+                f"Analyzing [{cfg['experiment_name']}]…",
+                total=len(audio_paths),
+            )
 
-    _print_batch_summary(records)
+            for path in audio_paths:
+                progress.update(task, description=f"[cyan]{Path(path).name}[/cyan]")
+                try:
+                    record = pipeline.analyze_file(path)
+                    records.append(record)
+                    save_json(record, json_dir, full=full)
+                    if save_per_file_markdown:
+                        save_md(record, md_dir)
+                except Exception as exc:
+                    failed += 1
+                    if not skip_errors:
+                        raise
+                    console.print(f"[yellow]⚠ Skipped {Path(path).name}: {exc}[/yellow]")
+                progress.advance(task)
+
+        console.print(
+            f"\n[bold green]✓ Analyzed {len(records)}/{len(audio_paths)} files[/bold green]"
+            + (f" ([yellow]{failed} failed[/yellow])" if failed else '')
+        )
+
+        if not records:
+            console.print('[red]No records produced for this experiment.[/red]')
+            if len(experiments_to_run) == 1:
+                sys.exit(1)
+            continue
+
+        save_json_batch(records, batch_json_path, full=full)
+        console.print(f"[dim]Batch JSON → {batch_json_path}[/dim]")
+
+        if catalog:
+            build_catalog_markdown(records, catalog_md)
+            console.print(f"[dim]Catalog   → {catalog_md}[/dim]")
+
+        if save_csv:
+            build_catalog_csv(records, catalog_csv_path)
+            console.print(f"[dim]CSV       → {catalog_csv_path}[/dim]")
+
+        _print_batch_summary(records)
 
 
 def _print_batch_summary(records) -> None:
@@ -211,6 +278,7 @@ def _print_batch_summary(records) -> None:
     table.add_column('CatID', style='yellow', no_wrap=True)
     table.add_column('Category', style='cyan')
     table.add_column('SubCategory', style='green')
+    table.add_column('Experiment', style='blue')
     table.add_column('Conf', justify='right')
     table.add_column('FXName', max_width=40)
 
@@ -220,8 +288,19 @@ def _print_batch_summary(records) -> None:
             record.cat_id,
             record.category,
             record.subcategory,
+            record.analysis_provenance.experiment_name,
             f"{record.confidence:.2f}",
             record.fx_name[:40] + ('…' if len(record.fx_name) > 40 else ''),
         )
 
     console.print(table)
+
+
+def _resource_cache_key(config: dict) -> tuple:
+    return (
+        config.get('model_id'),
+        config.get('device'),
+        config.get('fp16'),
+        config.get('label_cache_path'),
+        config.get('vocab_sha256'),
+    )

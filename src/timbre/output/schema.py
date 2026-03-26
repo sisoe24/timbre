@@ -50,8 +50,11 @@ class AnalysisProvenance(BaseModel):
     """Inputs and cache provenance for a rendered analysis record."""
 
     model_id: str
+    config_path: str
     vocab_path: str
     vocab_sha256: str
+    experiment_name: str = 'default'
+    experiment_fingerprint: str | None = None
     cache_path: str | None = None
     cache_fingerprint: str | None = None
 
@@ -87,7 +90,9 @@ class AudioAnalysisRecord(BaseModel):
     # ---- Identity -------------------------------------------------------
     file_name: str
     analyzed_at: str = Field(
-        default_factory=lambda: datetime.datetime.utcnow().isoformat() + 'Z'
+        default_factory=lambda: datetime.datetime.now(
+            datetime.timezone.utc
+        ).isoformat().replace('+00:00', 'Z')
     )
 
     # ---- UCS core fields ------------------------------------------------

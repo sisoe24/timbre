@@ -15,7 +15,7 @@ console = Console()
 
 
 @click.command()
-@click.argument('audio_file', type=click.Path(exists=True))
+@click.argument('audio_file', required=False, type=click.Path(exists=True))
 @click.option(
     '--output-dir',
     '-o',
@@ -33,6 +33,23 @@ console = Console()
     '-v',
     default=None,
     help='Path to vocabulary.yaml (default: config/vocabulary.yaml)',
+)
+@click.option(
+    '--experiment',
+    multiple=True,
+    help='Named experiment profile to load from config.yaml. Repeat to run several.',
+)
+@click.option(
+    '--all-experiments',
+    is_flag=True,
+    default=False,
+    help='Run all named experiment profiles from config.yaml',
+)
+@click.option(
+    '--list-experiments',
+    is_flag=True,
+    default=False,
+    help='List experiment names from config.yaml and exit',
 )
 @click.option(
     '--full',
@@ -67,10 +84,13 @@ console = Console()
     help='Enable verbose debug logging, including third-party request logs',
 )
 def main(
-    audio_file: str,
+    audio_file: str | None,
     output_dir: str,
     config: str,
     vocab: str,
+    experiment: tuple[str, ...],
+    all_experiments: bool,
+    list_experiments: bool,
     full: bool,
     save_markdown: bool,
     no_windowed: bool,
@@ -80,59 +100,112 @@ def main(
     """Analyze a single AUDIO_FILE and produce a catalog-ready description."""
 
     from timbre.pipeline import AudioAnalysisPipeline
+    from timbre.output_paths import resolve_output_paths
     from timbre.config_loader import load_config, setup_logging
+    from timbre.config_loader import \
+        list_experiments as list_config_experiments
+    from timbre.config_loader import (refresh_runtime_metadata,
+                                      resolve_requested_experiments)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
+    from timbre.ingestion.audio_loader import load_audio
 
-    cfg = load_config(config_path=config, vocab_path=vocab)
-    if no_windowed:
-        cfg['use_windowed_analysis'] = False
+    if list_experiments:
+        names = list_config_experiments(config)
+        if names:
+            console.print('\n'.join(names))
+        else:
+            console.print('[yellow]No named experiments configured.[/yellow]')
+        return
 
-    setup_logging(cfg, debug=debug)
-    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+    if audio_file is None:
+        raise click.UsageError('Missing argument: AUDIO_FILE')
 
-    vocab_file = Path(cfg['vocab_path']).name
-    vocab_sha = cfg['vocab_sha256'][:12]
-    vocab_source = cfg['vocab_source']
-
-    out_dir = Path(output_dir or cfg['output'].get('json_dir', './outputs/json'))
-
-    if not quiet:
-        console.print(
-            Panel.fit(
-                f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
-                f"File: [green]{audio_file}[/green]\n"
-                f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-                f"Vocab: [magenta]{vocab_file}[/magenta] "
-                f"[dim]({vocab_sha}, {vocab_source})[/dim]",
-                title='🎧 Analysis',
-            )
+    try:
+        experiments_to_run = resolve_requested_experiments(
+            config_path=config,
+            requested_experiments=experiment,
+            all_experiments=all_experiments,
         )
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
 
-    pipeline = AudioAnalysisPipeline(cfg)
+    shared_resources: dict[tuple, tuple] = {}
+    loaded_audio_by_sr = {}
 
-    if not quiet:
-        with console.status('Loading CLAP model…'):
-            pipeline.load_model()
-        console.print('[green]✓[/green] Model loaded.')
-    else:
-        pipeline.load_model()
+    for experiment_name in experiments_to_run:
+        cfg = load_config(
+            config_path=config,
+            vocab_path=vocab,
+            experiment_name=experiment_name,
+        )
+        if no_windowed:
+            cfg['use_windowed_analysis'] = False
+            refresh_runtime_metadata(cfg)
 
-    if not quiet:
-        with console.status(f"Analyzing {Path(audio_file).name}…"):
-            record = pipeline.analyze_file(audio_file)
-    else:
-        record = pipeline.analyze_file(audio_file)
+        setup_logging(cfg, debug=debug)
+        remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
 
-    json_path = save_json(record, out_dir, full=full)
+        vocab_file = Path(cfg['vocab_path']).name
+        vocab_sha = cfg['vocab_sha256'][:12]
+        vocab_source = cfg['vocab_source']
 
-    if save_markdown or cfg['output'].get('save_per_file_markdown', False):
-        md_dir = Path(cfg['output'].get('markdown_dir', './outputs/markdown'))
-        save_md(record, md_dir)
+        output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
+        out_dir = output_paths['json_dir']
 
-    if not quiet:
-        _print_record(record)
-        console.print(f"\n[dim]JSON saved → {json_path}[/dim]")
+        if not quiet:
+            console.print(
+                Panel.fit(
+                    f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
+                    f"File: [green]{audio_file}[/green]\n"
+                    f"Experiment: [blue]{cfg['experiment_name']}[/blue] "
+                    f"[dim]({cfg['experiment_fingerprint']})[/dim]\n"
+                    f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
+                    f"Vocab: [magenta]{vocab_file}[/magenta] "
+                    f"[dim]({vocab_sha}, {vocab_source})[/dim]",
+                    title='🎧 Analysis',
+                )
+            )
+
+        pipeline = AudioAnalysisPipeline(cfg)
+        resource_key = _resource_cache_key(cfg)
+        if resource_key in shared_resources:
+            pipeline.tagger, pipeline.cache = shared_resources[resource_key]
+            if not quiet:
+                console.print('[green]✓[/green] Reusing loaded CLAP model.')
+        else:
+            if not quiet:
+                with console.status('Loading CLAP model…'):
+                    pipeline.load_model()
+                console.print('[green]✓[/green] Model loaded.')
+            else:
+                pipeline.load_model()
+            shared_resources[resource_key] = (pipeline.tagger, pipeline.cache)
+
+        target_sr = cfg['target_sr']
+        if target_sr not in loaded_audio_by_sr:
+            loaded_audio_by_sr[target_sr] = load_audio(audio_file, target_sr=target_sr)
+
+        if not quiet:
+            with console.status(f"Analyzing {Path(audio_file).name}…"):
+                record = pipeline.analyze_file(
+                    audio_file,
+                    audio_file=loaded_audio_by_sr[target_sr],
+                )
+        else:
+            record = pipeline.analyze_file(
+                audio_file,
+                audio_file=loaded_audio_by_sr[target_sr],
+            )
+
+        json_path = save_json(record, out_dir, full=full)
+
+        if save_markdown or cfg['output'].get('save_per_file_markdown', False):
+            save_md(record, output_paths['markdown_dir'])
+
+        if not quiet:
+            _print_record(record)
+            console.print(f"\n[dim]JSON saved → {json_path}[/dim]")
 
 
 def _print_record(record) -> None:
@@ -178,7 +251,18 @@ def _print_record(record) -> None:
         f"\n[dim]Duration: {record.metadata.duration_seconds:.2f}s  |  "
         f"Sample rate: {record.metadata.sample_rate_hz} Hz  |  "
         f"Format: {record.metadata.format.upper()}  |  "
+        f"Experiment: {record.analysis_provenance.experiment_name}  |  "
         f"Creator: {record.creator_id}  |  Source: {record.source_id}  |  "
         f"Vocab: {Path(record.analysis_provenance.vocab_path).name} "
         f"({record.analysis_provenance.vocab_sha256[:12]})[/dim]"
+    )
+
+
+def _resource_cache_key(config: dict) -> tuple:
+    return (
+        config.get('model_id'),
+        config.get('device'),
+        config.get('fp16'),
+        config.get('label_cache_path'),
+        config.get('vocab_sha256'),
     )

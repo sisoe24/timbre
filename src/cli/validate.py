@@ -43,6 +43,7 @@ import click
 from rich.table import Table
 from rich.console import Console
 
+from timbre.output_paths import resolve_output_paths
 from timbre.config_loader import load_config
 
 console = Console()
@@ -262,10 +263,11 @@ def run_validation(
     mode: str,
     report: Path | None,
     config: str | Path | None,
+    experiment: str | None,
     temp: float = TEMP,
 ) -> None:
     """Run the validation workflow."""
-    cfg = load_config(config_path=config)
+    cfg = load_config(config_path=config, experiment_name=experiment)
     default_models = {
         'ollama': 'qwen3.5',
         'openai': 'gpt-4o',
@@ -278,8 +280,16 @@ def run_validation(
 
     records = load_records(input_path)
 
+    inferred_experiment = _infer_experiment_name(records)
+    if experiment is None and inferred_experiment:
+        try:
+            cfg = load_config(config_path=config, experiment_name=inferred_experiment)
+        except ValueError:
+            pass
+
     console.print(
-        f"\n[bold]Validating {len(records)} record(s): {backend} / {model} / temp: {temp}[/bold]\n")
+        f"\n[bold]Validating {len(records)} record(s): {backend} / {model} / "
+        f"experiment: {cfg['experiment_name']} / temp: {temp}[/bold]\n")
 
     all_results = []
     corrected_records = []
@@ -293,6 +303,7 @@ def run_validation(
             validation['file_name'] = file_name
             validation['backend'] = backend
             validation['model'] = model
+            validation['analysis_provenance'] = record.get('analysis_provenance', {})
             all_results.append(validation)
 
             score = validation.get('consistency_score', 0.0)
@@ -320,8 +331,7 @@ def run_validation(
     if report:
         report_path = report
     else:
-        output_root = Path(cfg['output'].get('output_dir', './out'))
-        report_path = output_root / 'validation' / 'validation_report.json'
+        report_path = resolve_output_paths(cfg)['validation_report']
     report_path.parent.mkdir(parents=True, exist_ok=True)
     with open(report_path, 'w') as f:
         json.dump(all_results, f, indent=2)
@@ -372,6 +382,11 @@ def run_validation(
     help='Path to config.yaml (default: config/config.yaml)',
 )
 @click.option(
+    '--experiment',
+    default=None,
+    help='Named experiment profile to load from config.yaml',
+)
+@click.option(
     '--mode',
     type=click.Choice(['audit', 'autocorrect']),
     default='audit',
@@ -389,6 +404,7 @@ def main(
     backend: str,
     model: str | None,
     config: str | None,
+    experiment: str | None,
     mode: str,
     report: Path | None,
     temp: float = TEMP,
@@ -399,10 +415,22 @@ def main(
         backend=backend,
         model=model,
         config=config,
+        experiment=experiment,
         temp=temp,
         mode=mode,
         report=report,
     )
+
+
+def _infer_experiment_name(records: list[tuple[Path, dict]]) -> str | None:
+    names = {
+        record.get('analysis_provenance', {}).get('experiment_name')
+        for _, record in records
+        if record.get('analysis_provenance', {}).get('experiment_name')
+    }
+    if len(names) == 1:
+        return next(iter(names))
+    return None
 
 
 if __name__ == '__main__':

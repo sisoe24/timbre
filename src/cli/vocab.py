@@ -23,20 +23,23 @@ console = Console()
 
 
 def _render_info_table(cfg: dict) -> None:
-    cache_path = Path(cfg['label_cache_path'])
-    cache = LabelEmbeddingCache(cache_path)
-    metadata = cache.read_metadata() if cache_path.exists() else {}
+    cache_path_value = cfg.get('label_cache_path')
+    cache_path = Path(cache_path_value) if cache_path_value else None
+    cache = LabelEmbeddingCache(cache_path) if cache_path else None
+    metadata = cache.read_metadata() if cache_path and cache_path.exists() else {}
 
     table = Table(title='Vocabulary Context', show_lines=True)
     table.add_column('Field', style='cyan', no_wrap=True)
     table.add_column('Value', style='white')
+    table.add_row('Experiment', str(cfg.get('experiment_name')))
+    table.add_row('Experiment fingerprint', str(cfg.get('experiment_fingerprint')))
     table.add_row('Resolved source', str(cfg.get('vocab_source')))
     table.add_row('Vocabulary file', str(cfg.get('vocab_file')))
     table.add_row('Vocabulary path', str(cfg.get('vocab_path')))
     table.add_row('Vocabulary SHA256', str(cfg.get('vocab_sha256')))
     table.add_row('Cache fingerprint', str(cfg.get('cache_fingerprint')))
-    table.add_row('Resolved cache path', str(cache_path))
-    table.add_row('Cache exists', 'yes' if cache_path.exists() else 'no')
+    table.add_row('Resolved cache path', str(cache_path or '—'))
+    table.add_row('Cache exists', 'yes' if cache_path and cache_path.exists() else 'no')
     table.add_row('Model', str(cfg.get('model_id')))
 
     if metadata:
@@ -97,9 +100,14 @@ def main() -> None:
     default=None,
     help='Path to vocabulary YAML (overrides active/config selection)',
 )
-def info(config: str, vocab: str | None) -> None:
+@click.option(
+    '--experiment',
+    default=None,
+    help='Named experiment profile to load from config.yaml',
+)
+def info(config: str, vocab: str | None, experiment: str | None) -> None:
     """Show the resolved vocabulary and cache information."""
-    cfg = load_config(config_path=config, vocab_path=vocab)
+    cfg = load_config(config_path=config, vocab_path=vocab, experiment_name=experiment)
     _render_info_table(cfg)
 
 
@@ -109,9 +117,14 @@ def info(config: str, vocab: str | None) -> None:
     default=str(PROJECT_ROOT / 'config' / 'config.yaml'),
     help='Path to config.yaml (default: config/config.yaml)',
 )
-def current(config: str) -> None:
+@click.option(
+    '--experiment',
+    default=None,
+    help='Named experiment profile to load from config.yaml',
+)
+def current(config: str, experiment: str | None) -> None:
     """Alias for `timbre vocab info`."""
-    cfg = load_config(config_path=config)
+    cfg = load_config(config_path=config, experiment_name=experiment)
     _render_info_table(cfg)
 
 
@@ -185,6 +198,11 @@ def use(target: str | None) -> None:
     default=str(PROJECT_ROOT / 'config' / 'config.yaml'),
     help='Path to config.yaml (default: config/config.yaml)',
 )
+@click.option(
+    '--experiment',
+    default=None,
+    help='Named experiment profile to load from config.yaml',
+)
 def add(
     source_path: Path,
     name: str | None,
@@ -193,6 +211,7 @@ def add(
     batch_size: int,
     debug: bool,
     config: str,
+    experiment: str | None,
 ) -> None:
     """Copy a vocab into config/, register it, and build its cache."""
     destination = CONFIG_DIR / (name or source_path.name)
@@ -205,7 +224,11 @@ def add(
     shutil.copy2(source_path, destination)
     remember_vocab_with_metadata(destination, make_active=activate, managed=True, source='added')
 
-    cfg = load_config(config_path=config, vocab_path=destination)
+    cfg = load_config(
+        config_path=config,
+        vocab_path=destination,
+        experiment_name=experiment,
+    )
     setup_logging(cfg, debug=debug)
     build_cache_for_config(cfg, force=force, batch_size=batch_size)
 
@@ -226,12 +249,24 @@ def add(
     default=None,
     help='Path to vocabulary YAML (overrides active/config selection)',
 )
+@click.option(
+    '--experiment',
+    default=None,
+    help='Named experiment profile to load from config.yaml',
+)
 @click.option('--force', is_flag=True, default=False, help='Rebuild cache even if it exists')
 @click.option('--batch-size', type=int, default=64, help='Cache build batch size')
 @click.option('--debug', is_flag=True, default=False, help='Enable verbose debug logging')
-def cache(config: str, vocab: str | None, force: bool, batch_size: int, debug: bool) -> None:
+def cache(
+    config: str,
+    vocab: str | None,
+    experiment: str | None,
+    force: bool,
+    batch_size: int,
+    debug: bool,
+) -> None:
     """Build or refresh the cache for the resolved vocabulary."""
-    cfg = load_config(config_path=config, vocab_path=vocab)
+    cfg = load_config(config_path=config, vocab_path=vocab, experiment_name=experiment)
     setup_logging(cfg, debug=debug)
     remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
     build_cache_for_config(cfg, force=force, batch_size=batch_size)

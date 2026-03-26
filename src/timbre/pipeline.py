@@ -364,8 +364,11 @@ class AudioAnalysisPipeline:
 
         analysis_provenance = AnalysisProvenance(
             model_id=self.config.get('model_id', 'unknown'),
+            config_path=self.config.get('config_path', 'unknown'),
             vocab_path=self.config.get('vocab_path', 'unknown'),
             vocab_sha256=self.config.get('vocab_sha256', 'unknown'),
+            experiment_name=self.config.get('experiment_name', 'default'),
+            experiment_fingerprint=self.config.get('experiment_fingerprint'),
             cache_path=self.config.get('label_cache_path'),
             cache_fingerprint=self.config.get('cache_fingerprint'),
         )

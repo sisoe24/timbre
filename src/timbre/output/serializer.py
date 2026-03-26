@@ -83,6 +83,8 @@ def save_json_batch(
 # UCS-aligned CSV columns
 CSV_COLUMNS = [
     'file_name',
+    'experiment_name',
+    'experiment_fingerprint',
     'cat_id',
     'category',
     'subcategory',
@@ -98,6 +100,7 @@ CSV_COLUMNS = [
     'user_data',
     'suggested_filename',
     'model_id',
+    'config_path',
     'vocab_file',
     'vocab_sha256',
     'cache_fingerprint',
@@ -120,6 +123,8 @@ def save_csv(
     for r in records:
         rows.append({
             'file_name': r.file_name,
+            'experiment_name': r.analysis_provenance.experiment_name,
+            'experiment_fingerprint': r.analysis_provenance.experiment_fingerprint or '',
             'cat_id': r.cat_id,
             'category': r.category,
             'subcategory': r.subcategory,
@@ -135,6 +140,7 @@ def save_csv(
             'user_data': r.user_data,
             'suggested_filename': r.suggested_filename,
             'model_id': r.analysis_provenance.model_id,
+            'config_path': r.analysis_provenance.config_path,
             'vocab_file': Path(r.analysis_provenance.vocab_path).name,
             'vocab_sha256': r.analysis_provenance.vocab_sha256,
             'cache_fingerprint': r.analysis_provenance.cache_fingerprint or '',
@@ -221,6 +227,10 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         f"| Field | Value |",
         f"|---|---|",
         f"| **Model** | `{r.analysis_provenance.model_id}` |",
+        f"| **Experiment** | `{r.analysis_provenance.experiment_name}` |",
+        f"| **Experiment Fingerprint** | "
+        f"`{r.analysis_provenance.experiment_fingerprint or '—'}` |",
+        f"| **Config Path** | `{r.analysis_provenance.config_path}` |",
         f"| **Vocabulary File** | `{Path(r.analysis_provenance.vocab_path).name}` |",
         f"| **Vocabulary SHA256** | `{r.analysis_provenance.vocab_sha256}` |",
         f"| **Cache Fingerprint** | `{r.analysis_provenance.cache_fingerprint or '—'}` |",

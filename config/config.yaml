@@ -1,135 +1,156 @@
 # ============================================================================
-# Audio Analyzer — Phase 1 Configuration
+# Audio Analyzer — Experiment-Aware Configuration
 # ============================================================================
 
-# ---------------------------------------------------------------------------
-# Model settings
-# ---------------------------------------------------------------------------
-model:
-  # HuggingFace model ID for CLAP
-  # Options: "laion/larger_clap_general" (recommended, 630K pairs)
-  #          "laion/clap-htsat-unfused"  (smaller, faster fallback)
-  model_id: "laion/larger_clap_general"
+# The base section holds the shared defaults for all runs.
+# Named experiments below override only the keys they need.
+default_experiment: "balanced"
 
-  # Device: "cuda", "mps", "cpu", or null (auto-detect)
-  # null = auto-detect: prefers cuda → mps (Apple Silicon) → cpu
-  device: null
+base:
+  # -------------------------------------------------------------------------
+  # Model settings
+  # -------------------------------------------------------------------------
+  model:
+    # HuggingFace model ID for CLAP
+    model_id: "laion/larger_clap_general"
 
-  # Use float16 to reduce memory usage.
-  # Only applied on CUDA — disabled automatically on MPS and CPU.
-  fp16: true
+    # Device: "cuda", "mps", "cpu", or null (auto-detect)
+    device: null
 
-  # Vocabulary file (relative to this config file's directory).
-  # vocabulary_refined.yaml  — 1,464 CLAP-optimised natural-language prompts
-  #                            (~2 per subcategory; recommended for accuracy)
-  # vocabulary.yaml          — 17,441 labels including UCS keyword synonyms
-  #                            (original; kept as a reference / fallback)
-  # Override on the CLI with: --vocab path/to/vocabulary.yaml
-  vocab_file: "vocabulary.yaml"
+    # Use float16 to reduce memory usage.
+    # Only applied on CUDA — disabled automatically on MPS and CPU.
+    fp16: true
 
-  # Path to the pre-computed label embedding cache (.pt file).
-  # Resolved relative to the project root.
-  # Built automatically on first run, or manually via:
-  #   python timbre.py cache
-  # Delete this file and re-run to rebuild after changing the vocabulary.
-  label_cache_path: ".cache/label_cache.pt"
+    # Vocabulary file (relative to this config file's directory).
+    vocab_file: "vocabulary.yaml"
 
-# ---------------------------------------------------------------------------
-# Audio ingestion settings
-# ---------------------------------------------------------------------------
-audio:
-  # Sample rate CLAP expects (48000 Hz) — do not change unless using a
-  # different model that expects a different rate
-  target_sr: 48000
+    # Path to the pre-computed label embedding cache (.pt file).
+    # Resolved relative to the project root and fingerprinted by model+vocab.
+    label_cache_path: ".cache/label_cache.pt"
 
-  # Supported file extensions (librosa handles conversion)
-  supported_formats:
-    - .wav
-    - .mp3
-    - .flac
-    - .ogg
-    - .aiff
-    - .m4a
+  # -------------------------------------------------------------------------
+  # Audio ingestion settings
+  # -------------------------------------------------------------------------
+  audio:
+    target_sr: 48000
+    supported_formats:
+      - .wav
+      - .mp3
+      - .flac
+      - .ogg
+      - .aiff
+      - .m4a
 
-# ---------------------------------------------------------------------------
-# Analysis settings
-# ---------------------------------------------------------------------------
-analysis:
-  # Sliding window for temporal event detection
-  use_windowed_analysis: true
+  # -------------------------------------------------------------------------
+  # Analysis settings
+  # -------------------------------------------------------------------------
+  analysis:
+    use_windowed_analysis: true
+    windowed_min_duration: 2.0
+    window_seconds: 2.0
+    hop_seconds: 0.5
+    min_confidence: 0.25
+    top_k_categories: 5
+    n_fft: 2048
+    hop_length: 512
+    silence_threshold_db: -50.0
 
-  # Clips shorter than this (seconds) use full-clip analysis only
-  windowed_min_duration: 2.0
+  # -------------------------------------------------------------------------
+  # Output settings
+  # -------------------------------------------------------------------------
+  output:
+    output_dir: "./out"
+    json_dir: "./out/json"
+    csv_dir: "./out/csv"
+    markdown_dir: "./out/markdown"
+    catalog_markdown: "./out/catalog.md"
+    catalog_csv: "./out/catalog.csv"
+    batch_json: "./out/batch_results.json"
+    validation_report: "./out/validation/validation_report.json"
+    save_per_file_markdown: true
+    full_json: false
 
-  # CLAP sliding window size (seconds)
-  window_seconds: 2.0
+  # -------------------------------------------------------------------------
+  # UCS identity fields
+  # -------------------------------------------------------------------------
+  ucs:
+    creator_id: "UNKNOWN"
+    source_id: "NONE"
+    user_data: ""
 
-  # Sliding window hop (seconds) — smaller = finer temporal resolution
-  hop_seconds: 0.5
+  # -------------------------------------------------------------------------
+  # Logging
+  # -------------------------------------------------------------------------
+  logging:
+    level: "INFO"
+    format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+    log_file: null
 
-  # Minimum CLAP confidence to record a detection (below = "background")
-  min_confidence: 0.25
+experiments:
+  # Default baseline: good general balance between speed and detail.
+  balanced: {}
 
-  # Hierarchical classification: number of top UCS categories to explore in
-  # Stage 2 (score all labels inside the top-K categories by centroid distance).
-  # Lower = faster but higher risk of missing the correct category.
-  # Recommended range: 3–7. Set to null or omit to use all categories (flat).
-  top_k_categories: 5
+  # Faster run for broad triage or large folders.
+  fast:
+    analysis:
+      window_seconds: 2.5
+      hop_seconds: 1.0
+      top_k_categories: 3
 
-  # Acoustic feature extraction
-  n_fft: 2048
-  hop_length: 512
-  silence_threshold_db: -50.0
+  # Higher temporal resolution and broader category search.
+  precise:
+    analysis:
+      window_seconds: 1.5
+      hop_seconds: 0.25
+      min_confidence: 0.20
+      top_k_categories: 7
 
-# ---------------------------------------------------------------------------
-# Output settings
-# ---------------------------------------------------------------------------
-output:
-  # Root directory for all outputs
-  output_dir: "./out"
+  # Conservative profile: fewer, higher-confidence labels.
+  conservative:
+    analysis:
+      window_seconds: 2.5
+      hop_seconds: 0.75
+      min_confidence: 0.35
+      top_k_categories: 4
 
-  # Sub-directory structure
-  json_dir: "./out/json"
-  csv_dir: "./out/csv"
-  markdown_dir: "./out/markdown"
+  # Sensitive profile: higher recall, useful when CLAP is missing detail.
+  sensitive:
+    analysis:
+      window_seconds: 1.5
+      hop_seconds: 0.25
+      min_confidence: 0.15
+      top_k_categories: 8
 
-  # Catalog file names
-  catalog_markdown: "./out/catalog.md"
-  catalog_csv: "./out/catalog.csv"
-  batch_json: "./out/batch_results.json"
+  # Fine temporal segmentation for clips with multiple short events.
+  micro_events:
+    analysis:
+      windowed_min_duration: 1.0
+      window_seconds: 1.0
+      hop_seconds: 0.20
+      min_confidence: 0.18
+      top_k_categories: 7
 
-  # If true, save per-file Markdown report in addition to JSON
-  save_per_file_markdown: true
+  # Broad category expansion for ambiguous material.
+  broad_search:
+    analysis:
+      window_seconds: 2.0
+      hop_seconds: 0.50
+      min_confidence: 0.20
+      top_k_categories: null
 
-  # If true, include full metadata in JSON (vs. spec-only brief format)
-  full_json: false
+  # Full-clip only baseline to compare against windowed event detection.
+  clip_only:
+    analysis:
+      use_windowed_analysis: false
+      min_confidence: 0.25
+      top_k_categories: 5
 
-# ---------------------------------------------------------------------------
-# UCS (Universal Category System) identity fields
-# ---------------------------------------------------------------------------
-# These values are embedded into every analysis record and used to construct
-# the suggested UCS-compliant filename for each analyzed file.
-#
-# Reference: universalcategorysystem.com
-# ---------------------------------------------------------------------------
-ucs:
-  # Who recorded or designed the sounds (initials or short vendor code)
-  # Example: "TN" (Tim Nielsen), "SB", "ACME"
-  creator_id: "UNKNOWN"
-
-  # Source library or project identifier
-  # Example: "MyLibrary", "ProjectX", "NONE"
-  source_id: "NONE"
-
-  # Free-form user data appended to the suggested filename
-  # Common uses: microphone type, perspective, unique ID
-  # Example: "stereo", "mono", "closeup", "" (empty = omitted)
-  user_data: ""
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-logging:
-  level: "INFO"    # DEBUG, INFO, WARNING, ERROR
-  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-  log_file: null   # set to a path to also write logs to a file
+  # Smaller CLAP model baseline for speed/cost comparison.
+  compact_model:
+    model:
+      model_id: "laion/clap-htsat-unfused"
+    analysis:
+      window_seconds: 2.0
+      hop_seconds: 0.5
+      min_confidence: 0.25
+      top_k_categories: 5

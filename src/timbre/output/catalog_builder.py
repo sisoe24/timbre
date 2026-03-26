@@ -95,7 +95,7 @@ def build_catalog_csv(
 # ---------------------------------------------------------------------------
 
 def _catalog_header(title: str, count: int) -> List[str]:
-    now = datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')
+    now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%d %H:%M UTC')
     lines = [
         f"# {title}",
         '',
@@ -117,7 +117,10 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
     for record in records:
         provenance = record.analysis_provenance
         key = (
+            provenance.experiment_name,
+            provenance.experiment_fingerprint,
             provenance.model_id,
+            provenance.config_path,
             provenance.vocab_path,
             provenance.vocab_sha256,
             provenance.cache_fingerprint,
@@ -131,21 +134,40 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
     ]
 
     if len(profiles) == 1:
-        (model_id, vocab_path, vocab_sha256, cache_fingerprint), file_count = next(
-            iter(profiles.items())
-        )
+        (
+            experiment_name,
+            experiment_fingerprint,
+            model_id,
+            config_path,
+            vocab_path,
+            vocab_sha256,
+            cache_fingerprint,
+        ), file_count = next(iter(profiles.items()))
         lines.extend([
             f"- Files rendered with one analysis profile ({file_count} files).",
+            f"- Experiment: `{experiment_name}`",
+            f"- Experiment fingerprint: `{experiment_fingerprint or '—'}`",
             f"- Model: `{model_id}`",
+            f"- Config: `{config_path}`",
             f"- Vocabulary: `{Path(vocab_path).name}`",
             f"- Vocabulary SHA256: `{vocab_sha256}`",
             f"- Cache fingerprint: `{cache_fingerprint or '—'}`",
         ])
     else:
         lines.append(f"- Mixed analysis profiles detected: {len(profiles)}")
-        for (model_id, vocab_path, vocab_sha256, cache_fingerprint), file_count in profiles.items():
+        for (
+            experiment_name,
+            experiment_fingerprint,
+            model_id,
+            config_path,
+            vocab_path,
+            vocab_sha256,
+            cache_fingerprint,
+        ), file_count in profiles.items():
             lines.append(
-                f"- `{Path(vocab_path).name}` | model=`{model_id}` | "
+                f"- experiment=`{experiment_name}` | fp=`{experiment_fingerprint or '—'}` "
+                f"| model=`{model_id}` | config=`{Path(config_path).name}` "
+                f"| vocab=`{Path(vocab_path).name}` | "
                 f"sha=`{vocab_sha256[:12]}` | cache=`{cache_fingerprint or '—'}` "
                 f"| files={file_count}"
             )
@@ -180,7 +202,11 @@ def _record_catalog_block(r: AudioAnalysisRecord) -> List[str]:
         f"| **Confidence** | {conf_bar} {r.confidence:.2f} |",
         f"| **Events** | {event_str} |",
         f"| **Keywords** | {kw_str} |",
+        f"| **Experiment** | `{r.analysis_provenance.experiment_name}` |",
+        f"| **Experiment FP** | "
+        f"`{r.analysis_provenance.experiment_fingerprint or '—'}` |",
         f"| **Model** | `{r.analysis_provenance.model_id}` |",
+        f"| **Config** | `{Path(r.analysis_provenance.config_path).name}` |",
         f"| **Vocabulary** | `{vocab_file}` |",
         f"| **Vocab SHA** | `{r.analysis_provenance.vocab_sha256[:12]}` |",
         f"| **Cache FP** | `{r.analysis_provenance.cache_fingerprint or '—'}` |",
