@@ -773,6 +773,15 @@ python timbre.py batch ./samples --profile fast
 python timbre.py validate --input ./out/precise/json --profile precise
 ```
 
+To analyze and validate in one command:
+
+```bash
+python timbre.py analyze samples/0_sample.wav --profile precise --validate
+python timbre.py batch ./samples --profile fast --validate
+python timbre.py analyze samples/0_sample.wav --validate \
+  --validate-backend openai --validate-model gpt-5.4-mini
+```
+
 ### `config/vocabulary.yaml`
 
 Defines all labels CLAP classifies against. 13 categories, ~194 labels:

@@ -14,6 +14,9 @@ from rich.progress import (Progress, BarColumn, TextColumn, SpinnerColumn,
 
 from timbre.vocab_state import remember_vocab
 
+from .validation_chain import (add_validation_chain_options,
+                               ensure_validate_report_is_unambiguous)
+
 console = Console()
 
 
@@ -96,6 +99,7 @@ console = Console()
     default=False,
     help='Enable verbose debug logging, including third-party request logs',
 )
+@add_validation_chain_options
 def main(
     input_dir: str | None,
     output_dir: str,
@@ -113,6 +117,12 @@ def main(
     skip_errors: bool,
     limit: int,
     debug: bool,
+    validate_output: bool,
+    validate_backend: str,
+    validate_model: str | None,
+    validate_mode: str,
+    validate_temp: float,
+    validate_report: Path | None,
 ) -> None:
     """Batch analyze all audio files in INPUT_DIR."""
 
@@ -128,6 +138,8 @@ def main(
     from timbre.ingestion.audio_loader import discover_audio_files
     from timbre.output.catalog_builder import (build_catalog_csv,
                                                build_catalog_markdown)
+
+    from .validate import run_validation
 
     if list_profiles:
         names = list_config_profiles(config)
@@ -158,6 +170,7 @@ def main(
         )
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
+    ensure_validate_report_is_unambiguous(profiles_to_run, validate_report)
 
     shared_resources: dict[tuple, tuple] = {}
 
@@ -264,6 +277,18 @@ def main(
             console.print(f"[dim]CSV       → {catalog_csv_path}[/dim]")
 
         _print_batch_summary(records)
+
+        if validate_output:
+            run_validation(
+                input_path=json_dir,
+                backend=validate_backend,
+                model=validate_model,
+                mode=validate_mode,
+                report=validate_report,
+                config=config,
+                profile=cfg['profile_name'],
+                temp=validate_temp,
+            )
 
 
 def _print_batch_summary(records) -> None:
