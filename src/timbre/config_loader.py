@@ -51,7 +51,8 @@ NOISY_LOGGERS = [
 ]
 
 CONFIG_SECTION_KEYS = ('model', 'audio', 'analysis', 'output', 'logging', 'ucs')
-EXPERIMENT_FINGERPRINT_KEYS = (
+PROFILE_METADATA_KEYS = ('label', 'description')
+PROFILE_FINGERPRINT_KEYS = (
     'model_id',
     'device',
     'fp16',
@@ -88,12 +89,40 @@ def _deep_merge_dicts(base: dict, override: dict) -> dict:
     return merged
 
 
-def _split_config_document(raw_cfg: dict) -> tuple[dict, dict, str | None]:
-    experiments = raw_cfg.get('experiments') or {}
-    if not isinstance(experiments, dict):
-        raise ValueError("'experiments' must be a mapping of experiment names to overrides.")
+def _default_profile_label(name: str) -> str:
+    return name.replace('_', ' ').title()
 
-    default_experiment = raw_cfg.get('default_experiment')
+
+def _split_profile_entry(name: str, entry: dict | None) -> tuple[dict, dict]:
+    if entry is None:
+        entry = {}
+    if not isinstance(entry, dict):
+        raise ValueError(f"Profile '{name}' must be a mapping.")
+
+    metadata = {
+        'name': name,
+        'label': _default_profile_label(name),
+        'description': '',
+    }
+    overrides = {}
+    for key, value in entry.items():
+        if key in PROFILE_METADATA_KEYS:
+            metadata[key] = value or metadata[key]
+        else:
+            overrides[key] = copy.deepcopy(value)
+    return metadata, overrides
+
+
+def _split_config_document(raw_cfg: dict) -> tuple[dict, dict, str | None]:
+    profiles = raw_cfg.get('profiles')
+    if profiles is None:
+        profiles = raw_cfg.get('experiments') or {}
+    if not isinstance(profiles, dict):
+        raise ValueError("'profiles' must be a mapping of profile names to overrides.")
+
+    default_profile = raw_cfg.get('default_profile')
+    if default_profile is None:
+        default_profile = raw_cfg.get('default_experiment')
     if 'base' in raw_cfg:
         base_cfg = raw_cfg.get('base') or {}
         if not isinstance(base_cfg, dict):
@@ -105,36 +134,84 @@ def _split_config_document(raw_cfg: dict) -> tuple[dict, dict, str | None]:
             if key in raw_cfg
         }
 
-    return base_cfg, experiments, default_experiment
+    return base_cfg, profiles, default_profile
 
 
-def list_experiments(config_path: Optional[str | Path] = None) -> List[str]:
-    """Return the configured experiment names in declaration order."""
+def list_profiles(config_path: Optional[str | Path] = None) -> List[str]:
+    """Return the configured profile names in declaration order."""
     resolved_config_path = Path(config_path or DEFAULT_CONFIG_PATH)
     cfg = _load_yaml(resolved_config_path)
-    _, experiments, _ = _split_config_document(cfg)
-    return list(experiments.keys())
+    _, profiles, _ = _split_config_document(cfg)
+    return list(profiles.keys())
 
 
-def resolve_requested_experiments(
+def get_default_profile_name(config_path: Optional[str | Path] = None) -> str | None:
+    """Return the configured default profile name, if any."""
+    resolved_config_path = Path(config_path or DEFAULT_CONFIG_PATH)
+    cfg = _load_yaml(resolved_config_path)
+    _, _, default_profile = _split_config_document(cfg)
+    return default_profile
+
+
+def get_profile_catalog(config_path: Optional[str | Path] = None) -> List[dict]:
+    """Return profile metadata for all configured profiles."""
+    resolved_config_path = Path(config_path or DEFAULT_CONFIG_PATH)
+    cfg = _load_yaml(resolved_config_path)
+    _, profiles, default_profile = _split_config_document(cfg)
+
+    items = []
+    for name, entry in profiles.items():
+        metadata, _ = _split_profile_entry(name, entry)
+        metadata['is_default'] = name == default_profile
+        items.append(metadata)
+    return items
+
+
+def get_profile_definition(
     config_path: Optional[str | Path] = None,
-    requested_experiments: Optional[List[str] | tuple[str, ...]] = None,
-    all_experiments: bool = False,
+    profile_name: Optional[str] = None,
+) -> dict:
+    """Return metadata and raw overrides for a specific profile."""
+    resolved_config_path = Path(config_path or DEFAULT_CONFIG_PATH)
+    cfg = _load_yaml(resolved_config_path)
+    _, profiles, default_profile = _split_config_document(cfg)
+
+    selected_name = profile_name or default_profile
+    if selected_name is None:
+        raise ValueError('No profile name provided and no default_profile is configured.')
+    if selected_name not in profiles:
+        raise ValueError(
+            f"Unknown profile '{selected_name}'. "
+            f"Available profiles: {', '.join(profiles.keys()) or 'none'}"
+        )
+
+    metadata, overrides = _split_profile_entry(selected_name, profiles[selected_name])
+    metadata['is_default'] = selected_name == default_profile
+    return {
+        'metadata': metadata,
+        'overrides': overrides,
+    }
+
+
+def resolve_requested_profiles(
+    config_path: Optional[str | Path] = None,
+    requested_profiles: Optional[List[str] | tuple[str, ...]] = None,
+    all_profiles: bool = False,
 ) -> List[str | None]:
     """
-    Resolve which experiments a CLI invocation should run.
+    Resolve which profiles a CLI invocation should run.
 
-    Returns a list of experiment names. `None` means "use default selection".
+    Returns a list of profile names. `None` means "use default selection".
     """
-    requested = list(requested_experiments or [])
+    requested = list(requested_profiles or [])
 
-    if all_experiments and requested:
-        raise ValueError('Use either --experiment or --all-experiments, not both.')
+    if all_profiles and requested:
+        raise ValueError('Use either --profile or --all-profiles, not both.')
 
-    if all_experiments:
-        names = list_experiments(config_path)
+    if all_profiles:
+        names = list_profiles(config_path)
         if not names:
-            raise ValueError('No named experiments configured in config.yaml.')
+            raise ValueError('No named profiles configured in config.yaml.')
         return names
 
     if not requested:
@@ -146,56 +223,58 @@ def resolve_requested_experiments(
 
 def resolve_effective_config(
     raw_cfg: dict,
-    experiment_name: Optional[str] = None,
+    profile_name: Optional[str] = None,
 ) -> tuple[dict, str, str, List[str]]:
     """
-    Resolve the effective config document for the selected experiment.
+    Resolve the effective config document for the selected profile.
 
     Returns:
-        merged_cfg, resolved_experiment_name, experiment_source, available_experiments
+        merged_cfg, resolved_profile_name, profile_source, available_profiles
     """
-    base_cfg, experiments, default_experiment = _split_config_document(raw_cfg)
-    available_experiments = list(experiments.keys())
+    base_cfg, profiles, default_profile = _split_config_document(raw_cfg)
+    available_profiles = list(profiles.keys())
 
-    if experiment_name is not None:
-        if experiment_name not in experiments:
+    if profile_name is not None:
+        if profile_name not in profiles:
             raise ValueError(
-                f"Unknown experiment '{experiment_name}'. "
-                f"Available experiments: {', '.join(available_experiments) or 'none'}"
+                f"Unknown profile '{profile_name}'. "
+                f"Available profiles: {', '.join(available_profiles) or 'none'}"
             )
+        _, profile_overrides = _split_profile_entry(profile_name, profiles[profile_name])
         return (
-            _deep_merge_dicts(base_cfg, experiments[experiment_name]),
-            experiment_name,
+            _deep_merge_dicts(base_cfg, profile_overrides),
+            profile_name,
             'explicit',
-            available_experiments,
+            available_profiles,
         )
 
-    if default_experiment:
-        if default_experiment not in experiments:
+    if default_profile:
+        if default_profile not in profiles:
             raise ValueError(
-                f"default_experiment '{default_experiment}' is not defined in 'experiments'."
+                f"default_profile '{default_profile}' is not defined in 'profiles'."
             )
+        _, profile_overrides = _split_profile_entry(default_profile, profiles[default_profile])
         return (
-            _deep_merge_dicts(base_cfg, experiments[default_experiment]),
-            default_experiment,
+            _deep_merge_dicts(base_cfg, profile_overrides),
+            default_profile,
             'default',
-            available_experiments,
+            available_profiles,
         )
 
-    return base_cfg, 'default', 'default', available_experiments
+    return base_cfg, 'default', 'default', available_profiles
 
 
-def _compute_experiment_fingerprint(runtime: dict) -> str:
+def _compute_profile_fingerprint(runtime: dict) -> str:
     payload = {
         key: runtime.get(key)
-        for key in EXPERIMENT_FINGERPRINT_KEYS
+        for key in PROFILE_FINGERPRINT_KEYS
     }
     stable_json = json.dumps(payload, sort_keys=True, separators=(',', ':'))
     return _sha256_text(stable_json)[:12]
 
 
 def refresh_runtime_metadata(runtime: dict) -> dict:
-    """Refresh derived cache and experiment metadata after runtime overrides."""
+    """Refresh derived cache and profile metadata after runtime overrides."""
     cache_fingerprint = _sha256_text(
         f"{runtime.get('model_id')}:{runtime.get('vocab_sha256')}"
     )[:12]
@@ -209,14 +288,14 @@ def refresh_runtime_metadata(runtime: dict) -> dict:
     else:
         runtime['label_cache_path'] = None
 
-    runtime['experiment_fingerprint'] = _compute_experiment_fingerprint(runtime)
+    runtime['profile_fingerprint'] = _compute_profile_fingerprint(runtime)
     return runtime
 
 
 def load_config(
     config_path: Optional[str | Path] = None,
     vocab_path: Optional[str | Path] = None,
-    experiment_name: Optional[str] = None,
+    profile_name: Optional[str] = None,
 ) -> dict:
     """
     Load and merge configuration + vocabulary into a single dict.
@@ -274,8 +353,8 @@ def load_config(
     vocab_path = Path(vocab_path)
 
     raw_cfg = _load_yaml(config_path)
-    cfg, resolved_experiment_name, experiment_source, available_experiments = (
-        resolve_effective_config(raw_cfg, experiment_name=experiment_name)
+    cfg, resolved_profile_name, profile_source, available_profiles = (
+        resolve_effective_config(raw_cfg, profile_name=profile_name)
     )
     vocab = _load_yaml(vocab_path)
 
@@ -334,9 +413,11 @@ def load_config(
         'label_cache_path': label_cache_path,
         'label_cache_base_path': label_cache_base_path,
         'cache_fingerprint': cache_fingerprint,
-        'experiment_name': resolved_experiment_name,
-        'experiment_source': experiment_source,
-        'available_experiments': available_experiments,
+        'profile_name': resolved_profile_name,
+        'profile_source': profile_source,
+        'available_profiles': available_profiles,
+        'profile_label': '',
+        'profile_description': '',
         'config_path': str(resolved_config_path),
         'vocab_path': str(resolved_vocab_path),
         'vocab_file': resolved_vocab_path.name,
@@ -373,11 +454,23 @@ def load_config(
         ),
         'log_file': log_cfg.get('log_file', None),
     }
+    if resolved_profile_name != 'default' and resolved_profile_name in available_profiles:
+        metadata, _ = _split_profile_entry(
+            resolved_profile_name,
+            dict(raw_cfg.get('profiles', raw_cfg.get('experiments', {}))).get(
+                resolved_profile_name
+            ),
+        )
+        runtime['profile_label'] = metadata.get('label', '')
+        runtime['profile_description'] = metadata.get('description', '')
+    else:
+        runtime['profile_label'] = _default_profile_label(runtime['profile_name'])
+        runtime['profile_description'] = ''
     refresh_runtime_metadata(runtime)
 
     logger.debug(
-        'Config loaded: experiment=%s labels=%d categories=%d.',
-        runtime['experiment_name'],
+        'Config loaded: profile=%s labels=%d categories=%d.',
+        runtime['profile_name'],
         len(candidate_labels),
         len(set(label_to_category.values())),
     )

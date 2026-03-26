@@ -263,11 +263,11 @@ def run_validation(
     mode: str,
     report: Path | None,
     config: str | Path | None,
-    experiment: str | None,
+    profile: str | None,
     temp: float = TEMP,
 ) -> None:
     """Run the validation workflow."""
-    cfg = load_config(config_path=config, experiment_name=experiment)
+    cfg = load_config(config_path=config, profile_name=profile)
     default_models = {
         'ollama': 'qwen3.5',
         'openai': 'gpt-4o',
@@ -280,16 +280,16 @@ def run_validation(
 
     records = load_records(input_path)
 
-    inferred_experiment = _infer_experiment_name(records)
-    if experiment is None and inferred_experiment:
+    inferred_profile = _infer_profile_name(records)
+    if profile is None and inferred_profile:
         try:
-            cfg = load_config(config_path=config, experiment_name=inferred_experiment)
+            cfg = load_config(config_path=config, profile_name=inferred_profile)
         except ValueError:
             pass
 
     console.print(
         f"\n[bold]Validating {len(records)} record(s): {backend} / {model} / "
-        f"experiment: {cfg['experiment_name']} / temp: {temp}[/bold]\n")
+        f"profile: {cfg['profile_name']} / temp: {temp}[/bold]\n")
 
     all_results = []
     corrected_records = []
@@ -382,9 +382,9 @@ def run_validation(
     help='Path to config.yaml (default: config/config.yaml)',
 )
 @click.option(
-    '--experiment',
+    '--profile',
     default=None,
-    help='Named experiment profile to load from config.yaml',
+    help='Named profile to load from config.yaml',
 )
 @click.option(
     '--mode',
@@ -404,7 +404,7 @@ def main(
     backend: str,
     model: str | None,
     config: str | None,
-    experiment: str | None,
+    profile: str | None,
     mode: str,
     report: Path | None,
     temp: float = TEMP,
@@ -415,18 +415,18 @@ def main(
         backend=backend,
         model=model,
         config=config,
-        experiment=experiment,
+        profile=profile,
         temp=temp,
         mode=mode,
         report=report,
     )
 
 
-def _infer_experiment_name(records: list[tuple[Path, dict]]) -> str | None:
+def _infer_profile_name(records: list[tuple[Path, dict]]) -> str | None:
     names = {
-        record.get('analysis_provenance', {}).get('experiment_name')
+        record.get('analysis_provenance', {}).get('profile_name')
         for _, record in records
-        if record.get('analysis_provenance', {}).get('experiment_name')
+        if record.get('analysis_provenance', {}).get('profile_name')
     }
     if len(names) == 1:
         return next(iter(names))

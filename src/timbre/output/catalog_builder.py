@@ -117,8 +117,8 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
     for record in records:
         provenance = record.analysis_provenance
         key = (
-            provenance.experiment_name,
-            provenance.experiment_fingerprint,
+            provenance.profile_name,
+            provenance.profile_fingerprint,
             provenance.model_id,
             provenance.config_path,
             provenance.vocab_path,
@@ -135,8 +135,8 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
 
     if len(profiles) == 1:
         (
-            experiment_name,
-            experiment_fingerprint,
+            profile_name,
+            profile_fingerprint,
             model_id,
             config_path,
             vocab_path,
@@ -145,8 +145,8 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
         ), file_count = next(iter(profiles.items()))
         lines.extend([
             f"- Files rendered with one analysis profile ({file_count} files).",
-            f"- Experiment: `{experiment_name}`",
-            f"- Experiment fingerprint: `{experiment_fingerprint or '—'}`",
+            f"- Profile: `{profile_name}`",
+            f"- Profile fingerprint: `{profile_fingerprint or '—'}`",
             f"- Model: `{model_id}`",
             f"- Config: `{config_path}`",
             f"- Vocabulary: `{Path(vocab_path).name}`",
@@ -156,8 +156,8 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
     else:
         lines.append(f"- Mixed analysis profiles detected: {len(profiles)}")
         for (
-            experiment_name,
-            experiment_fingerprint,
+            profile_name,
+            profile_fingerprint,
             model_id,
             config_path,
             vocab_path,
@@ -165,7 +165,7 @@ def _catalog_provenance_summary(records: List[AudioAnalysisRecord]) -> List[str]
             cache_fingerprint,
         ), file_count in profiles.items():
             lines.append(
-                f"- experiment=`{experiment_name}` | fp=`{experiment_fingerprint or '—'}` "
+                f"- profile=`{profile_name}` | fp=`{profile_fingerprint or '—'}` "
                 f"| model=`{model_id}` | config=`{Path(config_path).name}` "
                 f"| vocab=`{Path(vocab_path).name}` | "
                 f"sha=`{vocab_sha256[:12]}` | cache=`{cache_fingerprint or '—'}` "
@@ -202,9 +202,9 @@ def _record_catalog_block(r: AudioAnalysisRecord) -> List[str]:
         f"| **Confidence** | {conf_bar} {r.confidence:.2f} |",
         f"| **Events** | {event_str} |",
         f"| **Keywords** | {kw_str} |",
-        f"| **Experiment** | `{r.analysis_provenance.experiment_name}` |",
-        f"| **Experiment FP** | "
-        f"`{r.analysis_provenance.experiment_fingerprint or '—'}` |",
+        f"| **Profile** | `{r.analysis_provenance.profile_name}` |",
+        f"| **Profile FP** | "
+        f"`{r.analysis_provenance.profile_fingerprint or '—'}` |",
         f"| **Model** | `{r.analysis_provenance.model_id}` |",
         f"| **Config** | `{Path(r.analysis_provenance.config_path).name}` |",
         f"| **Vocabulary** | `{vocab_file}` |",

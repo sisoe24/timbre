@@ -5,8 +5,10 @@ from pathlib import Path
 import pytest
 
 from timbre.output_paths import resolve_output_paths
-from timbre.config_loader import (load_config, refresh_runtime_metadata,
-                                  resolve_requested_experiments)
+from timbre.config_loader import (load_config, get_profile_catalog,
+                                  get_profile_definition,
+                                  refresh_runtime_metadata,
+                                  resolve_requested_profiles)
 
 
 def _write_vocab(path: Path) -> None:
@@ -28,7 +30,7 @@ categories:
 def _write_config(path: Path) -> None:
     path.write_text(
         """
-default_experiment: balanced
+default_profile: balanced
 base:
   model:
     model_id: "laion/larger_clap_general"
@@ -55,9 +57,13 @@ base:
     validation_report: "./out/validation/validation_report.json"
   logging:
     level: "INFO"
-experiments:
-  balanced: {}
+profiles:
+  balanced:
+    label: "Balanced"
+    description: "Default review profile."
   fast:
+    label: "Fast"
+    description: "Quick pass profile."
     analysis:
       hop_seconds: 1.0
       top_k_categories: 3
@@ -76,44 +82,46 @@ def temp_config(tmp_path: Path) -> tuple[Path, Path]:
     return config_path, vocab_path
 
 
-def test_load_config_applies_default_experiment(temp_config: tuple[Path, Path]) -> None:
+def test_load_config_applies_default_profile(temp_config: tuple[Path, Path]) -> None:
     config_path, vocab_path = temp_config
 
     cfg = load_config(config_path=config_path, vocab_path=vocab_path)
 
-    assert cfg['experiment_name'] == 'balanced'
-    assert cfg['experiment_source'] == 'default'
+    assert cfg['profile_name'] == 'balanced'
+    assert cfg['profile_label'] == 'Balanced'
+    assert cfg['profile_description'] == 'Default review profile.'
+    assert cfg['profile_source'] == 'default'
     assert cfg['hop_seconds'] == 0.5
-    assert cfg['available_experiments'] == ['balanced', 'fast']
+    assert cfg['available_profiles'] == ['balanced', 'fast']
 
 
-def test_load_config_applies_named_experiment_override(temp_config: tuple[Path, Path]) -> None:
+def test_load_config_applies_named_profile_override(temp_config: tuple[Path, Path]) -> None:
     config_path, vocab_path = temp_config
 
     cfg = load_config(
         config_path=config_path,
         vocab_path=vocab_path,
-        experiment_name='fast',
+        profile_name='fast',
     )
 
-    assert cfg['experiment_name'] == 'fast'
-    assert cfg['experiment_source'] == 'explicit'
+    assert cfg['profile_name'] == 'fast'
+    assert cfg['profile_source'] == 'explicit'
     assert cfg['hop_seconds'] == 1.0
     assert cfg['top_k_categories'] == 3
 
 
-def test_load_config_rejects_unknown_experiment(temp_config: tuple[Path, Path]) -> None:
+def test_load_config_rejects_unknown_profile(temp_config: tuple[Path, Path]) -> None:
     config_path, vocab_path = temp_config
 
-    with pytest.raises(ValueError, match="Unknown experiment 'missing'"):
+    with pytest.raises(ValueError, match="Unknown profile 'missing'"):
         load_config(
             config_path=config_path,
             vocab_path=vocab_path,
-            experiment_name='missing',
+            profile_name='missing',
         )
 
 
-def test_experiment_fingerprint_is_stable_and_updates_on_override(
+def test_profile_fingerprint_is_stable_and_updates_on_override(
     temp_config: tuple[Path, Path],
 ) -> None:
     config_path, vocab_path = temp_config
@@ -122,23 +130,23 @@ def test_experiment_fingerprint_is_stable_and_updates_on_override(
     cfg_explicit = load_config(
         config_path=config_path,
         vocab_path=vocab_path,
-        experiment_name='balanced',
+        profile_name='balanced',
     )
 
-    assert cfg_default['experiment_fingerprint'] == cfg_explicit['experiment_fingerprint']
+    assert cfg_default['profile_fingerprint'] == cfg_explicit['profile_fingerprint']
 
     cfg_default['use_windowed_analysis'] = False
     refresh_runtime_metadata(cfg_default)
 
-    assert cfg_default['experiment_fingerprint'] != cfg_explicit['experiment_fingerprint']
+    assert cfg_default['profile_fingerprint'] != cfg_explicit['profile_fingerprint']
 
 
-def test_output_paths_are_scoped_by_experiment(temp_config: tuple[Path, Path]) -> None:
+def test_output_paths_are_scoped_by_profile(temp_config: tuple[Path, Path]) -> None:
     config_path, vocab_path = temp_config
     cfg = load_config(
         config_path=config_path,
         vocab_path=vocab_path,
-        experiment_name='fast',
+        profile_name='fast',
     )
 
     paths = resolve_output_paths(cfg)
@@ -152,37 +160,63 @@ def test_output_paths_are_scoped_by_experiment(temp_config: tuple[Path, Path]) -
     )
 
 
-def test_resolve_requested_experiments_defaults_to_default_selection(
+def test_resolve_requested_profiles_defaults_to_default_selection(
     temp_config: tuple[Path, Path],
 ) -> None:
     config_path, _ = temp_config
 
-    names = resolve_requested_experiments(config_path=config_path)
+    names = resolve_requested_profiles(config_path=config_path)
 
     assert names == [None]
 
 
-def test_resolve_requested_experiments_all_profiles(
+def test_resolve_requested_profiles_all_profiles(
     temp_config: tuple[Path, Path],
 ) -> None:
     config_path, _ = temp_config
 
-    names = resolve_requested_experiments(
+    names = resolve_requested_profiles(
         config_path=config_path,
-        all_experiments=True,
+        all_profiles=True,
     )
 
     assert names == ['balanced', 'fast']
 
 
-def test_resolve_requested_experiments_rejects_mixed_selection(
+def test_resolve_requested_profiles_rejects_mixed_selection(
     temp_config: tuple[Path, Path],
 ) -> None:
     config_path, _ = temp_config
 
-    with pytest.raises(ValueError, match='Use either --experiment or --all-experiments'):
-        resolve_requested_experiments(
+    with pytest.raises(ValueError, match='Use either --profile or --all-profiles'):
+        resolve_requested_profiles(
             config_path=config_path,
-            requested_experiments=['balanced'],
-            all_experiments=True,
+            requested_profiles=['balanced'],
+            all_profiles=True,
         )
+
+
+def test_profile_catalog_exposes_label_and_description(
+    temp_config: tuple[Path, Path],
+) -> None:
+    config_path, _ = temp_config
+
+    catalog = get_profile_catalog(config_path)
+
+    assert catalog[0]['name'] == 'balanced'
+    assert catalog[0]['label'] == 'Balanced'
+    assert catalog[0]['description'] == 'Default review profile.'
+    assert catalog[0]['is_default'] is True
+
+
+def test_profile_definition_returns_metadata_and_overrides(
+    temp_config: tuple[Path, Path],
+) -> None:
+    config_path, _ = temp_config
+
+    definition = get_profile_definition(config_path, 'fast')
+
+    assert definition['metadata']['name'] == 'fast'
+    assert definition['metadata']['label'] == 'Fast'
+    assert definition['metadata']['description'] == 'Quick pass profile.'
+    assert definition['overrides']['analysis']['hop_seconds'] == 1.0

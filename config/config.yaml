@@ -1,10 +1,10 @@
 # ============================================================================
-# Audio Analyzer — Experiment-Aware Configuration
+# Audio Analyzer — Profile-Aware Configuration
 # ============================================================================
 
 # The base section holds the shared defaults for all runs.
-# Named experiments below override only the keys they need.
-default_experiment: "balanced"
+# Named profiles below override only the keys they need.
+default_profile: "balanced"
 
 base:
   # -------------------------------------------------------------------------
@@ -86,12 +86,16 @@ base:
     format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     log_file: null
 
-experiments:
+profiles:
   # Default baseline: good general balance between speed and detail.
-  balanced: {}
+  balanced:
+    label: "Balanced"
+    description: "Default balance between speed, temporal detail, and category breadth."
 
   # Faster run for broad triage or large folders.
   fast:
+    label: "Fast"
+    description: "Higher throughput profile for broad folder sweeps and initial triage."
     analysis:
       window_seconds: 2.5
       hop_seconds: 1.0
@@ -99,6 +103,8 @@ experiments:
 
   # Higher temporal resolution and broader category search.
   precise:
+    label: "Precise"
+    description: "Finer temporal resolution and broader category search for detailed review."
     analysis:
       window_seconds: 1.5
       hop_seconds: 0.25
@@ -107,6 +113,8 @@ experiments:
 
   # Conservative profile: fewer, higher-confidence labels.
   conservative:
+    label: "Conservative"
+    description: "Biases toward fewer, cleaner, higher-confidence tags and events."
     analysis:
       window_seconds: 2.5
       hop_seconds: 0.75
@@ -115,6 +123,8 @@ experiments:
 
   # Sensitive profile: higher recall, useful when CLAP is missing detail.
   sensitive:
+    label: "Sensitive"
+    description: "Lower confidence threshold and wider search to recover subtle content."
     analysis:
       window_seconds: 1.5
       hop_seconds: 0.25
@@ -123,6 +133,8 @@ experiments:
 
   # Fine temporal segmentation for clips with multiple short events.
   micro_events:
+    label: "Micro Events"
+    description: "Shorter windows for clips with several brief or rapidly changing events."
     analysis:
       windowed_min_duration: 1.0
       window_seconds: 1.0
@@ -132,6 +144,8 @@ experiments:
 
   # Broad category expansion for ambiguous material.
   broad_search:
+    label: "Broad Search"
+    description: "Expands across all categories when the material is ambiguous or hard to place."
     analysis:
       window_seconds: 2.0
       hop_seconds: 0.50
@@ -140,6 +154,8 @@ experiments:
 
   # Full-clip only baseline to compare against windowed event detection.
   clip_only:
+    label: "Clip Only"
+    description: "Disables windowed event detection to compare against full-clip classification."
     analysis:
       use_windowed_analysis: false
       min_confidence: 0.25
@@ -147,6 +163,8 @@ experiments:
 
   # Smaller CLAP model baseline for speed/cost comparison.
   compact_model:
+    label: "Compact Model"
+    description: "Uses the smaller CLAP model as a speed and cost baseline."
     model:
       model_id: "laion/clap-htsat-unfused"
     analysis:

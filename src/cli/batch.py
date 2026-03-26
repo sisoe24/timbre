@@ -28,21 +28,21 @@ console = Console()
 @click.option('--config', '-c', default=None, help='Path to config.yaml')
 @click.option('--vocab', '-v', default=None, help='Path to vocabulary.yaml')
 @click.option(
-    '--experiment',
+    '--profile',
     multiple=True,
-    help='Named experiment profile to load from config.yaml. Repeat to run several.',
+    help='Named profile to load from config.yaml. Repeat to run several.',
 )
 @click.option(
-    '--all-experiments',
+    '--all-profiles',
     is_flag=True,
     default=False,
-    help='Run all named experiment profiles from config.yaml',
+    help='Run all named profiles from config.yaml',
 )
 @click.option(
-    '--list-experiments',
+    '--list-profiles',
     is_flag=True,
     default=False,
-    help='List experiment names from config.yaml and exit',
+    help='List profile names from config.yaml and exit',
 )
 @click.option(
     '--recursive',
@@ -101,9 +101,9 @@ def main(
     output_dir: str,
     config: str,
     vocab: str,
-    experiment: tuple[str, ...],
-    all_experiments: bool,
-    list_experiments: bool,
+    profile: tuple[str, ...],
+    all_profiles: bool,
+    list_profiles: bool,
     recursive: bool,
     catalog: bool,
     save_csv: bool,
@@ -118,11 +118,10 @@ def main(
 
     from timbre.pipeline import AudioAnalysisPipeline
     from timbre.output_paths import resolve_output_paths
-    from timbre.config_loader import load_config, setup_logging
-    from timbre.config_loader import \
-        list_experiments as list_config_experiments
-    from timbre.config_loader import (refresh_runtime_metadata,
-                                      resolve_requested_experiments)
+    from timbre.config_loader import load_config
+    from timbre.config_loader import list_profiles as list_config_profiles
+    from timbre.config_loader import (setup_logging, refresh_runtime_metadata,
+                                      resolve_requested_profiles)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
     from timbre.output.serializer import save_json_batch
@@ -130,12 +129,12 @@ def main(
     from timbre.output.catalog_builder import (build_catalog_csv,
                                                build_catalog_markdown)
 
-    if list_experiments:
-        names = list_config_experiments(config)
+    if list_profiles:
+        names = list_config_profiles(config)
         if names:
             console.print('\n'.join(names))
         else:
-            console.print('[yellow]No named experiments configured.[/yellow]')
+            console.print('[yellow]No named profiles configured.[/yellow]')
         return
 
     if input_dir is None:
@@ -152,21 +151,21 @@ def main(
     console.print(f"\nFound [bold]{len(audio_paths)}[/bold] audio files.\n")
 
     try:
-        experiments_to_run = resolve_requested_experiments(
+        profiles_to_run = resolve_requested_profiles(
             config_path=config,
-            requested_experiments=experiment,
-            all_experiments=all_experiments,
+            requested_profiles=profile,
+            all_profiles=all_profiles,
         )
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
 
     shared_resources: dict[tuple, tuple] = {}
 
-    for experiment_name in experiments_to_run:
+    for profile_name in profiles_to_run:
         cfg = load_config(
             config_path=config,
             vocab_path=vocab,
-            experiment_name=experiment_name,
+            profile_name=profile_name,
         )
         if no_windowed:
             cfg['use_windowed_analysis'] = False
@@ -191,8 +190,8 @@ def main(
                 f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
                 f"Input: [green]{input_dir}[/green]\n"
                 f"Output: [yellow]{out_root}[/yellow]\n"
-                f"Experiment: [blue]{cfg['experiment_name']}[/blue] "
-                f"[dim]({cfg['experiment_fingerprint']})[/dim]\n"
+                f"Profile: [blue]{cfg['profile_name']}[/blue] "
+                f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
                 f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
                 f"Vocab: [magenta]{vocab_file}[/magenta] "
                 f"[dim]({vocab_sha}, {vocab_source})[/dim]",
@@ -223,7 +222,7 @@ def main(
             console=console,
         ) as progress:
             task = progress.add_task(
-                f"Analyzing [{cfg['experiment_name']}]…",
+                f"Analyzing [{cfg['profile_name']}]…",
                 total=len(audio_paths),
             )
 
@@ -248,8 +247,8 @@ def main(
         )
 
         if not records:
-            console.print('[red]No records produced for this experiment.[/red]')
-            if len(experiments_to_run) == 1:
+            console.print('[red]No records produced for this profile.[/red]')
+            if len(profiles_to_run) == 1:
                 sys.exit(1)
             continue
 
@@ -278,7 +277,7 @@ def _print_batch_summary(records) -> None:
     table.add_column('CatID', style='yellow', no_wrap=True)
     table.add_column('Category', style='cyan')
     table.add_column('SubCategory', style='green')
-    table.add_column('Experiment', style='blue')
+    table.add_column('Profile', style='blue')
     table.add_column('Conf', justify='right')
     table.add_column('FXName', max_width=40)
 
@@ -288,7 +287,7 @@ def _print_batch_summary(records) -> None:
             record.cat_id,
             record.category,
             record.subcategory,
-            record.analysis_provenance.experiment_name,
+            record.analysis_provenance.profile_name,
             f"{record.confidence:.2f}",
             record.fx_name[:40] + ('…' if len(record.fx_name) > 40 else ''),
         )

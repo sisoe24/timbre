@@ -53,8 +53,8 @@ class AnalysisProvenance(BaseModel):
     config_path: str
     vocab_path: str
     vocab_sha256: str
-    experiment_name: str = 'default'
-    experiment_fingerprint: str | None = None
+    profile_name: str = 'default'
+    profile_fingerprint: str | None = None
     cache_path: str | None = None
     cache_fingerprint: str | None = None
 

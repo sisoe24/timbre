@@ -35,21 +35,21 @@ console = Console()
     help='Path to vocabulary.yaml (default: config/vocabulary.yaml)',
 )
 @click.option(
-    '--experiment',
+    '--profile',
     multiple=True,
-    help='Named experiment profile to load from config.yaml. Repeat to run several.',
+    help='Named profile to load from config.yaml. Repeat to run several.',
 )
 @click.option(
-    '--all-experiments',
+    '--all-profiles',
     is_flag=True,
     default=False,
-    help='Run all named experiment profiles from config.yaml',
+    help='Run all named profiles from config.yaml',
 )
 @click.option(
-    '--list-experiments',
+    '--list-profiles',
     is_flag=True,
     default=False,
-    help='List experiment names from config.yaml and exit',
+    help='List profile names from config.yaml and exit',
 )
 @click.option(
     '--full',
@@ -88,9 +88,9 @@ def main(
     output_dir: str,
     config: str,
     vocab: str,
-    experiment: tuple[str, ...],
-    all_experiments: bool,
-    list_experiments: bool,
+    profile: tuple[str, ...],
+    all_profiles: bool,
+    list_profiles: bool,
     full: bool,
     save_markdown: bool,
     no_windowed: bool,
@@ -101,31 +101,30 @@ def main(
 
     from timbre.pipeline import AudioAnalysisPipeline
     from timbre.output_paths import resolve_output_paths
-    from timbre.config_loader import load_config, setup_logging
-    from timbre.config_loader import \
-        list_experiments as list_config_experiments
-    from timbre.config_loader import (refresh_runtime_metadata,
-                                      resolve_requested_experiments)
+    from timbre.config_loader import load_config
+    from timbre.config_loader import list_profiles as list_config_profiles
+    from timbre.config_loader import (setup_logging, refresh_runtime_metadata,
+                                      resolve_requested_profiles)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
     from timbre.ingestion.audio_loader import load_audio
 
-    if list_experiments:
-        names = list_config_experiments(config)
+    if list_profiles:
+        names = list_config_profiles(config)
         if names:
             console.print('\n'.join(names))
         else:
-            console.print('[yellow]No named experiments configured.[/yellow]')
+            console.print('[yellow]No named profiles configured.[/yellow]')
         return
 
     if audio_file is None:
         raise click.UsageError('Missing argument: AUDIO_FILE')
 
     try:
-        experiments_to_run = resolve_requested_experiments(
+        profiles_to_run = resolve_requested_profiles(
             config_path=config,
-            requested_experiments=experiment,
-            all_experiments=all_experiments,
+            requested_profiles=profile,
+            all_profiles=all_profiles,
         )
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
@@ -133,11 +132,11 @@ def main(
     shared_resources: dict[tuple, tuple] = {}
     loaded_audio_by_sr = {}
 
-    for experiment_name in experiments_to_run:
+    for profile_name in profiles_to_run:
         cfg = load_config(
             config_path=config,
             vocab_path=vocab,
-            experiment_name=experiment_name,
+            profile_name=profile_name,
         )
         if no_windowed:
             cfg['use_windowed_analysis'] = False
@@ -158,8 +157,8 @@ def main(
                 Panel.fit(
                     f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
                     f"File: [green]{audio_file}[/green]\n"
-                    f"Experiment: [blue]{cfg['experiment_name']}[/blue] "
-                    f"[dim]({cfg['experiment_fingerprint']})[/dim]\n"
+                    f"Profile: [blue]{cfg['profile_name']}[/blue] "
+                    f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
                     f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
                     f"Vocab: [magenta]{vocab_file}[/magenta] "
                     f"[dim]({vocab_sha}, {vocab_source})[/dim]",
@@ -251,7 +250,7 @@ def _print_record(record) -> None:
         f"\n[dim]Duration: {record.metadata.duration_seconds:.2f}s  |  "
         f"Sample rate: {record.metadata.sample_rate_hz} Hz  |  "
         f"Format: {record.metadata.format.upper()}  |  "
-        f"Experiment: {record.analysis_provenance.experiment_name}  |  "
+        f"Profile: {record.analysis_provenance.profile_name}  |  "
         f"Creator: {record.creator_id}  |  Source: {record.source_id}  |  "
         f"Vocab: {Path(record.analysis_provenance.vocab_path).name} "
         f"({record.analysis_provenance.vocab_sha256[:12]})[/dim]"

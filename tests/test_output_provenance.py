@@ -8,9 +8,9 @@ from timbre.output.serializer import save_csv, save_markdown
 from timbre.output.catalog_builder import build_catalog_markdown
 
 
-def _build_record(experiment_name: str, fingerprint: str) -> AudioAnalysisRecord:
+def _build_record(profile_name: str, fingerprint: str) -> AudioAnalysisRecord:
     return AudioAnalysisRecord(
-        file_name=f'{experiment_name}.wav',
+        file_name=f'{profile_name}.wav',
         category='IMPACTS',
         subcategory='METAL',
         cat_id='IMPMtl',
@@ -23,11 +23,11 @@ def _build_record(experiment_name: str, fingerprint: str) -> AudioAnalysisRecord
         creator_id='UNKNOWN',
         source_id='NONE',
         user_data='',
-        suggested_filename=f'IMPMtl_Metal Impact_UNKNOWN_NONE_{experiment_name}',
+        suggested_filename=f'IMPMtl_Metal Impact_UNKNOWN_NONE_{profile_name}',
         top_labels={'metallic impact': 0.82},
         metadata=AudioMetadata(
-            file_name=f'{experiment_name}.wav',
-            file_path=f'/tmp/{experiment_name}.wav',
+            file_name=f'{profile_name}.wav',
+            file_path=f'/tmp/{profile_name}.wav',
             format='wav',
             duration_seconds=1.2,
             sample_rate_hz=48000,
@@ -51,15 +51,15 @@ def _build_record(experiment_name: str, fingerprint: str) -> AudioAnalysisRecord
             config_path='/tmp/config.yaml',
             vocab_path='/tmp/vocabulary.yaml',
             vocab_sha256='abcdef1234567890',
-            experiment_name=experiment_name,
-            experiment_fingerprint=fingerprint,
+            profile_name=profile_name,
+            profile_fingerprint=fingerprint,
             cache_path='/tmp/cache.pt',
             cache_fingerprint='cache12345678',
         ),
     )
 
 
-def test_serializer_outputs_include_experiment_provenance(tmp_path: Path) -> None:
+def test_serializer_outputs_include_profile_provenance(tmp_path: Path) -> None:
     record = _build_record('fast', 'expfast123456')
 
     csv_path = save_csv([record], tmp_path / 'catalog.csv')
@@ -68,13 +68,13 @@ def test_serializer_outputs_include_experiment_provenance(tmp_path: Path) -> Non
     csv_text = csv_path.read_text(encoding='utf-8')
     markdown_text = markdown_path.read_text(encoding='utf-8')
 
-    assert 'experiment_name' in csv_text
+    assert 'profile_name' in csv_text
     assert 'fast' in csv_text
-    assert 'Experiment' in markdown_text
+    assert 'Profile' in markdown_text
     assert 'expfast123456' in markdown_text
 
 
-def test_catalog_groups_provenance_by_experiment(tmp_path: Path) -> None:
+def test_catalog_groups_provenance_by_profile(tmp_path: Path) -> None:
     fast_record = _build_record('fast', 'expfast123456')
     precise_record = _build_record('precise', 'expprecise789')
 
@@ -85,5 +85,5 @@ def test_catalog_groups_provenance_by_experiment(tmp_path: Path) -> None:
     catalog_text = output_path.read_text(encoding='utf-8')
 
     assert 'Mixed analysis profiles detected: 2' in catalog_text
-    assert 'experiment=`fast`' in catalog_text
-    assert 'experiment=`precise`' in catalog_text
+    assert 'profile=`fast`' in catalog_text
+    assert 'profile=`precise`' in catalog_text
