@@ -68,6 +68,7 @@ base:
     batch_json: "./out/batch_results.json"
     validation_report: "./out/validation/validation_report.json"
     save_per_file_markdown: true
+    save_validation_report: false
     full_json: false
 
   # -------------------------------------------------------------------------

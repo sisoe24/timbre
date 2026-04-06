@@ -138,6 +138,19 @@ class LLMProvenance(BaseModel):
     metadata_repaired: bool = False
 
 
+class ValidationSummary(BaseModel):
+    """Inline validation outcome attached to saved analysis records."""
+
+    validated_inline: bool = True
+    backend: str
+    model: str
+    mode: str
+    consistency_score: float = Field(..., ge=0.0, le=1.0)
+    issues: List[str] = Field(default_factory=list)
+    notes: str = ''
+    report_path: str | None = None
+
+
 class AudioAnalysisRecord(BaseModel):
     """
     Complete UCS-compliant analysis record for one audio file.
@@ -199,6 +212,7 @@ class AudioAnalysisRecord(BaseModel):
     description_details: DescriptionDetails | None = None
     mapping_diagnostics: MappingDiagnostics | None = None
     llm_provenance: LLMProvenance | None = None
+    validation_summary: ValidationSummary | None = None
 
     # ---- Metadata -------------------------------------------------------
     metadata: AudioMetadata
@@ -231,6 +245,9 @@ class AudioAnalysisRecord(BaseModel):
             'user_data': self.user_data,
             'suggested_filename': self.suggested_filename,
             'analysis_provenance': self.analysis_provenance.model_dump(),
+            'validation_summary': (
+                self.validation_summary.model_dump() if self.validation_summary else None
+            ),
         }
 
     def to_full_dict(self) -> dict:

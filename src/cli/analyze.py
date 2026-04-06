@@ -10,9 +10,9 @@ from rich.table import Table
 from rich.console import Console
 
 from timbre.vocab_state import remember_vocab
+from timbre.output.schema import ValidationSummary
 
-from .validation_chain import (add_validation_chain_options,
-                               ensure_validate_report_is_unambiguous)
+from .validation_chain import add_validation_chain_options
 
 console = Console()
 
@@ -35,24 +35,12 @@ console = Console()
     '--vocab',
     '-v',
     default=None,
-    help='Path to vocabulary.yaml (default: config/vocabulary.yaml)',
+    help='Advanced override for vocabulary.yaml',
 )
 @click.option(
     '--profile',
-    multiple=True,
-    help='Named profile to load from config.yaml. Repeat to run several.',
-)
-@click.option(
-    '--all-profiles',
-    is_flag=True,
-    default=False,
-    help='Run all named profiles from config.yaml',
-)
-@click.option(
-    '--list-profiles',
-    is_flag=True,
-    default=False,
-    help='List profile names from config.yaml and exit',
+    default=None,
+    help='Optional named profile from config.yaml',
 )
 @click.option(
     '--full',
@@ -71,7 +59,7 @@ console = Console()
     '--no-windowed',
     is_flag=True,
     default=False,
-    help='Disable sliding-window event detection (faster, less temporal detail)',
+    help='Disable sliding-window event detection',
 )
 @click.option(
     '--quiet',
@@ -89,12 +77,10 @@ console = Console()
 @add_validation_chain_options
 def main(
     audio_file: str | None,
-    output_dir: str,
-    config: str,
-    vocab: str,
-    profile: tuple[str, ...],
-    all_profiles: bool,
-    list_profiles: bool,
+    output_dir: str | None,
+    config: str | None,
+    vocab: str | None,
+    profile: str | None,
     full: bool,
     save_markdown: bool,
     no_windowed: bool,
@@ -107,129 +93,115 @@ def main(
     validate_temp: float,
     validate_report: Path | None,
 ) -> None:
-    """Analyze a single AUDIO_FILE and produce a catalog-ready description."""
+    """Analyze one AUDIO_FILE and save the generated catalog record."""
 
     from timbre.pipeline import AudioAnalysisPipeline
     from timbre.output_paths import resolve_output_paths
-    from timbre.config_loader import load_config
-    from timbre.config_loader import list_profiles as list_config_profiles
-    from timbre.config_loader import (setup_logging, refresh_runtime_metadata,
-                                      resolve_requested_profiles)
+    from timbre.config_loader import (load_config, setup_logging,
+                                      refresh_runtime_metadata)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
     from timbre.ingestion.audio_loader import load_audio
 
-    from .validate import run_validation
-
-    if list_profiles:
-        names = list_config_profiles(config)
-        if names:
-            console.print('\n'.join(names))
-        else:
-            console.print('[yellow]No named profiles configured.[/yellow]')
-        return
+    from .validate import validate_record, maybe_write_validation_report
 
     if audio_file is None:
         raise click.UsageError('Missing argument: AUDIO_FILE')
 
-    try:
-        profiles_to_run = resolve_requested_profiles(
-            config_path=config,
-            requested_profiles=profile,
-            all_profiles=all_profiles,
+    cfg = load_config(config_path=config, vocab_path=vocab, profile_name=profile)
+    if no_windowed:
+        cfg['use_windowed_analysis'] = False
+        refresh_runtime_metadata(cfg)
+
+    setup_logging(cfg, debug=debug)
+    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+
+    output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
+    out_dir = output_paths['json_dir']
+
+    if not quiet:
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Timbre Analyze[/bold cyan]\n"
+                f"File: [green]{audio_file}[/green]\n"
+                f"Profile: [blue]{cfg['profile_name']}[/blue] "
+                f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
+                f"Model: [yellow]{cfg['model_id']}[/yellow]",
+                title='Analysis',
+            )
         )
-    except ValueError as exc:
-        raise click.UsageError(str(exc)) from exc
-    ensure_validate_report_is_unambiguous(profiles_to_run, validate_report)
 
-    shared_resources: dict[tuple, tuple] = {}
-    loaded_audio_by_sr = {}
+    pipeline = AudioAnalysisPipeline(cfg)
+    if not quiet:
+        with console.status('Loading CLAP model…'):
+            pipeline.load_model()
+        console.print('[green]✓[/green] Model loaded.')
+    else:
+        pipeline.load_model()
 
-    for profile_name in profiles_to_run:
-        cfg = load_config(
-            config_path=config,
-            vocab_path=vocab,
-            profile_name=profile_name,
-        )
-        if no_windowed:
-            cfg['use_windowed_analysis'] = False
-            refresh_runtime_metadata(cfg)
+    loaded_audio = load_audio(audio_file, target_sr=cfg['target_sr'])
+    if not quiet:
+        with console.status(f"Analyzing {Path(audio_file).name}…"):
+            record = pipeline.analyze_file(audio_file, audio_file=loaded_audio)
+    else:
+        record = pipeline.analyze_file(audio_file, audio_file=loaded_audio)
 
-        setup_logging(cfg, debug=debug)
-        remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+    validation = None
+    validation_summary = None
+    if validate_output:
+        try:
+            if not quiet:
+                with console.status('Validating generated record…'):
+                    validation, _ = validate_record(
+                        record,
+                        backend=validate_backend,
+                        model=validate_model,
+                        mode=validate_mode,
+                        temp=validate_temp,
+                    )
+            else:
+                validation, _ = validate_record(
+                    record,
+                    backend=validate_backend,
+                    model=validate_model,
+                    mode=validate_mode,
+                    temp=validate_temp,
+                )
 
-        vocab_file = Path(cfg['vocab_path']).name
-        vocab_sha = cfg['vocab_sha256'][:12]
-        vocab_source = cfg['vocab_source']
-
-        output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
-        out_dir = output_paths['json_dir']
-
+            report_path = maybe_write_validation_report(
+                [validation],
+                report=validate_report,
+                config=cfg,
+            )
+            validation_summary = ValidationSummary(
+                backend=validation.get('backend', validate_backend),
+                model=validation.get('model', validate_model or 'unknown'),
+                mode=validation.get('mode', validate_mode),
+                consistency_score=validation.get('consistency_score', 0.0),
+                issues=validation.get('issues', []),
+                notes=validation.get('notes', ''),
+                report_path=str(report_path) if report_path is not None else None,
+            )
+        except Exception as exc:
+            raise click.ClickException(str(exc)) from exc
         if not quiet:
             console.print(
-                Panel.fit(
-                    f"[bold cyan]Audio Analyzer — UCS[/bold cyan]\n"
-                    f"File: [green]{audio_file}[/green]\n"
-                    f"Profile: [blue]{cfg['profile_name']}[/blue] "
-                    f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
-                    f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-                    f"Vocab: [magenta]{vocab_file}[/magenta] "
-                    f"[dim]({vocab_sha}, {vocab_source})[/dim]",
-                    title='🎧 Analysis',
-                )
+                f"[green]✓[/green] Validation score={validation.get('consistency_score', 0.0):.2f} "
+                f"issues={len(validation.get('issues', []))}"
             )
+            if report_path is not None:
+                console.print(f"[dim]Validation report → {report_path}[/dim]")
 
-        pipeline = AudioAnalysisPipeline(cfg)
-        resource_key = _resource_cache_key(cfg)
-        if resource_key in shared_resources:
-            pipeline.tagger, pipeline.cache = shared_resources[resource_key]
-            if not quiet:
-                console.print('[green]✓[/green] Reusing loaded CLAP model.')
-        else:
-            if not quiet:
-                with console.status('Loading CLAP model…'):
-                    pipeline.load_model()
-                console.print('[green]✓[/green] Model loaded.')
-            else:
-                pipeline.load_model()
-            shared_resources[resource_key] = (pipeline.tagger, pipeline.cache)
+    if validation_summary is not None:
+        record = record.model_copy(update={'validation_summary': validation_summary})
 
-        target_sr = cfg['target_sr']
-        if target_sr not in loaded_audio_by_sr:
-            loaded_audio_by_sr[target_sr] = load_audio(audio_file, target_sr=target_sr)
+    json_path = save_json(record, out_dir, full=full)
+    if save_markdown or cfg['output'].get('save_per_file_markdown', False):
+        save_md(record, output_paths['markdown_dir'])
 
-        if not quiet:
-            with console.status(f"Analyzing {Path(audio_file).name}…"):
-                record = pipeline.analyze_file(
-                    audio_file,
-                    audio_file=loaded_audio_by_sr[target_sr],
-                )
-        else:
-            record = pipeline.analyze_file(
-                audio_file,
-                audio_file=loaded_audio_by_sr[target_sr],
-            )
-
-        json_path = save_json(record, out_dir, full=full)
-
-        if save_markdown or cfg['output'].get('save_per_file_markdown', False):
-            save_md(record, output_paths['markdown_dir'])
-
-        if not quiet:
-            _print_record(record)
-            console.print(f"\n[dim]JSON saved → {json_path}[/dim]")
-
-        if validate_output:
-            run_validation(
-                input_path=json_path,
-                backend=validate_backend,
-                model=validate_model,
-                mode=validate_mode,
-                report=validate_report,
-                config=config,
-                profile=cfg['profile_name'],
-                temp=validate_temp,
-            )
+    if not quiet:
+        _print_record(record)
+        console.print(f"\n[dim]JSON saved → '{json_path}'[/dim]")
 
 
 def _print_record(record) -> None:
@@ -282,18 +254,5 @@ def _print_record(record) -> None:
         f"{record.analysis_provenance.analysis_elapsed_seconds:.2f}s[/dim]  |  "
         f"[dim]profile {record.analysis_provenance.profile_name}[/dim]  |  "
         f"[dim]creator {record.creator_id}[/dim]  |  "
-        f"[dim]source {source_id}[/dim]\n"
-        f"[dim]Vocab:[/dim] "
-        f"[dim]{Path(record.analysis_provenance.vocab_path).name} "
-        f"({record.analysis_provenance.vocab_sha256[:12]})[/dim]"
-    )
-
-
-def _resource_cache_key(config: dict) -> tuple:
-    return (
-        config.get('model_id'),
-        config.get('device'),
-        config.get('fp16'),
-        config.get('label_cache_path'),
-        config.get('vocab_sha256'),
+        f"[dim]source {source_id}[/dim]"
     )

@@ -13,7 +13,7 @@ from .validate import main as validate_command
 
 @click.group()
 def main() -> None:
-    """Timbre command-line interface."""
+    """Timbre CLI. Primary workflow: analyze, batch, validate. Advanced: profile, vocab."""
 
 
 main.add_command(analyze_command, name='analyze')

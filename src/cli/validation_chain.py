@@ -15,7 +15,7 @@ def add_validation_chain_options(func):
             'validate_output',
             is_flag=True,
             default=False,
-            help='Run LLM validation against generated JSON after analysis completes',
+            help='Run LLM validation on the generated record before writing outputs',
         ),
         click.option(
             '--validate-backend',
@@ -27,14 +27,14 @@ def add_validation_chain_options(func):
         click.option(
             '--validate-model',
             default=None,
-            help='Model name to use for chained validation',
+            help='Model name to use for inline validation',
         ),
         click.option(
             '--validate-mode',
             type=click.Choice(['audit', 'autocorrect']),
             default='audit',
             show_default=True,
-            help='Validation mode for chained validation',
+            help='Validation mode for inline validation',
         ),
         click.option(
             '--validate-temp',
@@ -47,22 +47,10 @@ def add_validation_chain_options(func):
             '--validate-report',
             default=None,
             type=click.Path(path_type=Path),
-            help='Path to save the chained validation report',
+            help='Optional path to save inline validation results',
         ),
     ]
 
     for option in reversed(options):
         func = option(func)
     return func
-
-
-def ensure_validate_report_is_unambiguous(
-    profiles_to_run: list[str | None],
-    validate_report: Path | None,
-) -> None:
-    """Reject a single explicit report path for multi-profile chained runs."""
-    if validate_report is not None and len(profiles_to_run) > 1:
-        raise click.UsageError(
-            '--validate-report cannot be used with multiple profiles; '
-            'run one profile at a time or omit the flag to use per-profile defaults.'
-        )

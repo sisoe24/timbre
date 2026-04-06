@@ -1,4 +1,4 @@
-"""CLI for batch-analyzing an entire folder of audio files."""
+"""CLI for batch-analyzing a folder of audio files."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from rich.progress import (Progress, BarColumn, TextColumn, SpinnerColumn,
                            TimeElapsedColumn, MofNCompleteColumn)
 
 from timbre.vocab_state import remember_vocab
+from timbre.output.schema import ValidationSummary
 
-from .validation_chain import (add_validation_chain_options,
-                               ensure_validate_report_is_unambiguous)
+from .validation_chain import add_validation_chain_options
 
 console = Console()
 
@@ -26,26 +26,14 @@ console = Console()
     '--output-dir',
     '-o',
     default=None,
-    help='Root output directory (default: ./outputs/)',
+    help='Root output directory (default: ./out/)',
 )
 @click.option('--config', '-c', default=None, help='Path to config.yaml')
-@click.option('--vocab', '-v', default=None, help='Path to vocabulary.yaml')
+@click.option('--vocab', '-v', default=None, help='Advanced override for vocabulary.yaml')
 @click.option(
     '--profile',
-    multiple=True,
-    help='Named profile to load from config.yaml. Repeat to run several.',
-)
-@click.option(
-    '--all-profiles',
-    is_flag=True,
-    default=False,
-    help='Run all named profiles from config.yaml',
-)
-@click.option(
-    '--list-profiles',
-    is_flag=True,
-    default=False,
-    help='List profile names from config.yaml and exit',
+    default=None,
+    help='Optional named profile from config.yaml',
 )
 @click.option(
     '--recursive',
@@ -90,7 +78,7 @@ console = Console()
     '--skip-errors',
     is_flag=True,
     default=True,
-    help='Skip files that fail to load/analyze (default: true)',
+    help='Skip files that fail to load, validate, or analyze (default: true)',
 )
 @click.option('--limit', default=None, type=int, help='Limit to the first N files')
 @click.option(
@@ -102,12 +90,10 @@ console = Console()
 @add_validation_chain_options
 def main(
     input_dir: str | None,
-    output_dir: str,
-    config: str,
-    vocab: str,
-    profile: tuple[str, ...],
-    all_profiles: bool,
-    list_profiles: bool,
+    output_dir: str | None,
+    config: str | None,
+    vocab: str | None,
+    profile: str | None,
     recursive: bool,
     catalog: bool,
     save_csv: bool,
@@ -115,7 +101,7 @@ def main(
     full: bool,
     no_windowed: bool,
     skip_errors: bool,
-    limit: int,
+    limit: int | None,
     debug: bool,
     validate_output: bool,
     validate_backend: str,
@@ -128,10 +114,8 @@ def main(
 
     from timbre.pipeline import AudioAnalysisPipeline
     from timbre.output_paths import resolve_output_paths
-    from timbre.config_loader import load_config
-    from timbre.config_loader import list_profiles as list_config_profiles
-    from timbre.config_loader import (setup_logging, refresh_runtime_metadata,
-                                      resolve_requested_profiles)
+    from timbre.config_loader import (load_config, setup_logging,
+                                      refresh_runtime_metadata)
     from timbre.output.serializer import save_json
     from timbre.output.serializer import save_markdown as save_md
     from timbre.output.serializer import save_json_batch
@@ -139,15 +123,7 @@ def main(
     from timbre.output.catalog_builder import (build_catalog_csv,
                                                build_catalog_markdown)
 
-    from .validate import run_validation
-
-    if list_profiles:
-        names = list_config_profiles(config)
-        if names:
-            console.print('\n'.join(names))
-        else:
-            console.print('[yellow]No named profiles configured.[/yellow]')
-        return
+    from .validate import validate_record, maybe_write_validation_report
 
     if input_dir is None:
         raise click.UsageError('Missing argument: INPUT_DIR')
@@ -156,139 +132,125 @@ def main(
     if not audio_paths:
         console.print(f"[red]No supported audio files found in: {input_dir}[/red]")
         sys.exit(1)
-
     if limit:
         audio_paths = audio_paths[:limit]
 
+    cfg = load_config(config_path=config, vocab_path=vocab, profile_name=profile)
+    if no_windowed:
+        cfg['use_windowed_analysis'] = False
+        refresh_runtime_metadata(cfg)
+
+    setup_logging(cfg, debug=debug)
+    remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+    output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
+    validation_report_target = None
+    if validate_output:
+        if validate_report is not None:
+            validation_report_target = validate_report
+        elif cfg['output'].get('save_validation_report'):
+            validation_report_target = output_paths['validation_report']
+
     console.print(f"\nFound [bold]{len(audio_paths)}[/bold] audio files.\n")
-
-    try:
-        profiles_to_run = resolve_requested_profiles(
-            config_path=config,
-            requested_profiles=profile,
-            all_profiles=all_profiles,
+    console.print(
+        Panel.fit(
+            f"[bold cyan]Timbre Batch[/bold cyan]\n"
+            f"Input: [green]{input_dir}[/green]\n"
+            f"Output: [yellow]{output_paths['root']}[/yellow]\n"
+            f"Profile: [blue]{cfg['profile_name']}[/blue] "
+            f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
+            f"Model: [yellow]{cfg['model_id']}[/yellow]",
+            title='Batch Analysis',
         )
-    except ValueError as exc:
-        raise click.UsageError(str(exc)) from exc
-    ensure_validate_report_is_unambiguous(profiles_to_run, validate_report)
+    )
 
-    shared_resources: dict[tuple, tuple] = {}
+    pipeline = AudioAnalysisPipeline(cfg)
+    with console.status('Loading CLAP model…'):
+        pipeline.load_model()
+    console.print('[green]✓[/green] Model loaded.\n')
 
-    for profile_name in profiles_to_run:
-        cfg = load_config(
-            config_path=config,
-            vocab_path=vocab,
-            profile_name=profile_name,
+    records = []
+    validation_results: list[dict] = []
+    failed = 0
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn('[progress.description]{task.description}'),
+        BarColumn(),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task('Analyzing…', total=len(audio_paths))
+
+        for path in audio_paths:
+            progress.update(task, description=f"[cyan]{Path(path).name}[/cyan]")
+            try:
+                record = pipeline.analyze_file(path)
+                if validate_output:
+                    validation, _ = validate_record(
+                        record,
+                        backend=validate_backend,
+                        model=validate_model,
+                        mode=validate_mode,
+                        temp=validate_temp,
+                    )
+                    validation_results.append(validation)
+                    record = record.model_copy(update={
+                        'validation_summary': ValidationSummary(
+                            backend=validation.get('backend', validate_backend),
+                            model=validation.get('model', validate_model or 'unknown'),
+                            mode=validation.get('mode', validate_mode),
+                            consistency_score=validation.get('consistency_score', 0.0),
+                            issues=validation.get('issues', []),
+                            notes=validation.get('notes', ''),
+                            report_path=(
+                                str(validation_report_target)
+                                if validation_report_target is not None else None
+                            ),
+                        )
+                    })
+
+                records.append(record)
+                save_json(record, output_paths['json_dir'], full=full)
+                if save_per_file_markdown:
+                    save_md(record, output_paths['markdown_dir'])
+            except Exception as exc:
+                failed += 1
+                if not skip_errors:
+                    raise
+                console.print(f"[yellow]⚠ Skipped {Path(path).name}: {exc}[/yellow]")
+            progress.advance(task)
+
+    if validate_output:
+        report_path = maybe_write_validation_report(
+            validation_results,
+            report=validation_report_target,
+            config=cfg,
         )
-        if no_windowed:
-            cfg['use_windowed_analysis'] = False
-            refresh_runtime_metadata(cfg)
-        setup_logging(cfg, debug=debug)
-        remember_vocab(cfg['vocab_path'], make_active=bool(vocab))
+        if report_path is not None:
+            console.print(f"[dim]Validation report → {report_path}[/dim]")
 
-        vocab_file = Path(cfg['vocab_path']).name
-        vocab_sha = cfg['vocab_sha256'][:12]
-        vocab_source = cfg['vocab_source']
+    console.print(
+        f"\n[bold green]✓ Analyzed {len(records)}/{len(audio_paths)} files[/bold green]"
+        + (f" ([yellow]{failed} failed[/yellow])" if failed else '')
+    )
 
-        output_paths = resolve_output_paths(cfg, explicit_output_dir=output_dir)
-        out_root = output_paths['root']
-        json_dir = output_paths['json_dir']
-        md_dir = output_paths['markdown_dir']
-        catalog_md = output_paths['catalog_markdown']
-        catalog_csv_path = output_paths['catalog_csv']
-        batch_json_path = output_paths['batch_json']
+    if not records:
+        console.print('[red]No records produced.[/red]')
+        sys.exit(1)
 
-        console.print(
-            Panel.fit(
-                f"[bold cyan]Audio Analyzer — Batch Mode[/bold cyan]\n"
-                f"Input: [green]{input_dir}[/green]\n"
-                f"Output: [yellow]{out_root}[/yellow]\n"
-                f"Profile: [blue]{cfg['profile_name']}[/blue] "
-                f"[dim]({cfg['profile_fingerprint']})[/dim]\n"
-                f"Model: [yellow]{cfg['model_id']}[/yellow]\n"
-                f"Vocab: [magenta]{vocab_file}[/magenta] "
-                f"[dim]({vocab_sha}, {vocab_source})[/dim]",
-                title='🎧 Batch Analysis',
-            )
-        )
+    save_json_batch(records, output_paths['batch_json'], full=full)
+    console.print(f"[dim]Batch JSON → {output_paths['batch_json']}[/dim]")
 
-        pipeline = AudioAnalysisPipeline(cfg)
-        resource_key = _resource_cache_key(cfg)
-        if resource_key in shared_resources:
-            pipeline.tagger, pipeline.cache = shared_resources[resource_key]
-            console.print('[green]✓[/green] Reusing loaded CLAP model.\n')
-        else:
-            with console.status('Loading CLAP model…'):
-                pipeline.load_model()
-            console.print('[green]✓[/green] Model loaded.\n')
-            shared_resources[resource_key] = (pipeline.tagger, pipeline.cache)
+    if catalog:
+        build_catalog_markdown(records, output_paths['catalog_markdown'])
+        console.print(f"[dim]Catalog   → {output_paths['catalog_markdown']}[/dim]")
 
-        records = []
-        failed = 0
+    if save_csv:
+        build_catalog_csv(records, output_paths['catalog_csv'])
+        console.print(f"[dim]CSV       → {output_paths['catalog_csv']}[/dim]")
 
-        with Progress(
-            SpinnerColumn(),
-            TextColumn('[progress.description]{task.description}'),
-            BarColumn(),
-            MofNCompleteColumn(),
-            TimeElapsedColumn(),
-            console=console,
-        ) as progress:
-            task = progress.add_task(
-                f"Analyzing [{cfg['profile_name']}]…",
-                total=len(audio_paths),
-            )
-
-            for path in audio_paths:
-                progress.update(task, description=f"[cyan]{Path(path).name}[/cyan]")
-                try:
-                    record = pipeline.analyze_file(path)
-                    records.append(record)
-                    save_json(record, json_dir, full=full)
-                    if save_per_file_markdown:
-                        save_md(record, md_dir)
-                except Exception as exc:
-                    failed += 1
-                    if not skip_errors:
-                        raise
-                    console.print(f"[yellow]⚠ Skipped {Path(path).name}: {exc}[/yellow]")
-                progress.advance(task)
-
-        console.print(
-            f"\n[bold green]✓ Analyzed {len(records)}/{len(audio_paths)} files[/bold green]"
-            + (f" ([yellow]{failed} failed[/yellow])" if failed else '')
-        )
-
-        if not records:
-            console.print('[red]No records produced for this profile.[/red]')
-            if len(profiles_to_run) == 1:
-                sys.exit(1)
-            continue
-
-        save_json_batch(records, batch_json_path, full=full)
-        console.print(f"[dim]Batch JSON → {batch_json_path}[/dim]")
-
-        if catalog:
-            build_catalog_markdown(records, catalog_md)
-            console.print(f"[dim]Catalog   → {catalog_md}[/dim]")
-
-        if save_csv:
-            build_catalog_csv(records, catalog_csv_path)
-            console.print(f"[dim]CSV       → {catalog_csv_path}[/dim]")
-
-        _print_batch_summary(records)
-
-        if validate_output:
-            run_validation(
-                input_path=json_dir,
-                backend=validate_backend,
-                model=validate_model,
-                mode=validate_mode,
-                report=validate_report,
-                config=config,
-                profile=cfg['profile_name'],
-                temp=validate_temp,
-            )
+    _print_batch_summary(records)
 
 
 def _print_batch_summary(records) -> None:
@@ -318,13 +280,3 @@ def _print_batch_summary(records) -> None:
         )
 
     console.print(table)
-
-
-def _resource_cache_key(config: dict) -> tuple:
-    return (
-        config.get('model_id'),
-        config.get('device'),
-        config.get('fp16'),
-        config.get('label_cache_path'),
-        config.get('vocab_sha256'),
-    )

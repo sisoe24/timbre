@@ -4,8 +4,9 @@ from timbre.pipeline import AudioAnalysisPipeline
 from timbre.output.schema import (AudioMetadata, EvidenceEvent, LLMProvenance,
                                   EvidenceBundle, PromptEvidence,
                                   AcousticSummary, RankedAlternative,
-                                  AnalysisProvenance, DescriptionDetails,
-                                  MappingDiagnostics, AudioAnalysisRecord)
+                                  ValidationSummary, AnalysisProvenance,
+                                  DescriptionDetails, MappingDiagnostics,
+                                  AudioAnalysisRecord)
 
 
 def _pipeline() -> AudioAnalysisPipeline:
@@ -123,6 +124,14 @@ def test_brief_output_stays_catalog_focused() -> None:
             metadata_attempts=1,
             metadata_repaired=False,
         ),
+        validation_summary=ValidationSummary(
+            backend='openai',
+            model='gpt-4o',
+            mode='audit',
+            consistency_score=0.94,
+            issues=[],
+            notes='validated inline',
+        ),
         metadata=AudioMetadata(
             file_name='impact.wav',
             file_path='/tmp/impact.wav',
@@ -158,3 +167,5 @@ def test_brief_output_stays_catalog_focused() -> None:
     assert 'evidence' not in brief
     assert 'mapping_diagnostics' not in brief
     assert brief['category'] == 'IMPACTS'
+    assert brief['validation_summary']['validated_inline'] is True
+    assert brief['validation_summary']['consistency_score'] == 0.94

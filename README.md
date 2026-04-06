@@ -224,45 +224,28 @@ Or skip activation and use the venv Python directly:
 .venv/bin/python timbre.py analyze samples/0_sample.wav
 ```
 
-To inspect the configured profiles:
+For the main workflow:
 
 ```bash
-python timbre.py analyze --list-profiles
-python timbre.py batch --list-profiles
-python timbre.py profile list
-python timbre.py profile inspect precise
-```
-
-To run with a specific profile:
-
-```bash
+python timbre.py analyze samples/0_sample.wav
+python timbre.py batch ./samples
 python timbre.py analyze samples/0_sample.wav --profile precise
 python timbre.py batch ./samples --profile fast
-```
-
-To run several profiles in one command:
-
-```bash
-python timbre.py analyze samples/0_sample.wav \
-  --profile balanced \
-  --profile precise \
-  --profile conservative
-
-python timbre.py batch ./samples \
-  --profile fast \
-  --profile precise
-```
-
-To sweep every named profile in the config:
-
-```bash
-python timbre.py analyze samples/0_sample.wav --all-profiles
-python timbre.py batch ./samples --all-profiles
+python timbre.py analyze samples/0_sample.wav --validate
 ```
 
 Outputs are scoped automatically by profile name. For example, with
 `--profile precise` and the default config, artifacts are written under
 `./out/precise/`.
+
+For advanced inspection and maintenance:
+
+```bash
+python timbre.py profile list
+python timbre.py profile inspect precise
+python timbre.py vocab info
+python timbre.py vocab cache --force
+```
 
 To confirm MPS is active, look for this line in the output:
 
@@ -564,12 +547,11 @@ Options:
 | Flag | Description |
 |---|---|
 | `--output-dir` / `-o` | Directory to save output files |
-| `--profile` | Named profile from `config.yaml` (repeatable) |
-| `--all-profiles` | Run every named profile from `config.yaml` |
-| `--list-profiles` | Print configured profiles and exit |
+| `--profile` | Optional named profile from `config.yaml` |
 | `--markdown` | Also save a per-file Markdown review report |
 | `--full` | Save full JSON (includes metadata + acoustics) |
 | `--no-windowed` | Disable sliding-window event detection (faster) |
+| `--validate` | Validate the generated record before saving outputs |
 | `--quiet` / `-q` | Suppress console output |
 
 ### Batch folder
@@ -583,49 +565,32 @@ Options:
 | Flag | Description |
 |---|---|
 | `--output-dir` / `-o` | Root output directory |
-| `--profile` | Named profile from `config.yaml` (repeatable) |
-| `--all-profiles` | Run every named profile from `config.yaml` |
-| `--list-profiles` | Print configured profiles and exit |
+| `--profile` | Optional named profile from `config.yaml` |
 | `--catalog` | Generate `catalog.md` (default: on) |
 | `--csv` | Generate `catalog.csv` (default: on) |
 | `--markdown` | Save per-file Markdown reports |
 | `--full` | Full JSON output per file |
 | `--limit N` | Only process first N files (useful for testing) |
 | `--no-windowed` | Disable sliding-window event detection |
+| `--validate` | Validate each generated record before saving outputs |
 
 ### Profiles
 
-Profiles let you A/B CLAP inference settings without editing code.
+Profiles are now an advanced workflow for selecting one runtime preset.
 The runtime config is selected from `config/config.yaml`, merged with the base
 settings, and stamped into every output record as provenance.
 
 Common workflow:
 
 ```bash
-# See the available profiles
-python timbre.py analyze --list-profiles
+# Inspect profiles
 python timbre.py profile list
-
-# Run the **same** file with two profiles
-python timbre.py analyze samples/0_sample.wav --profile balanced
-python timbre.py analyze samples/0_sample.wav --profile precise
-
-# Run several profiles in one pass
-python timbre.py analyze samples/0_sample.wav \
-  --profile balanced \
-  --profile precise \
-  --profile sensitive
-
-# Batch compare two profiles across a folder
-python timbre.py batch ./samples --profile fast
-python timbre.py batch ./samples --profile precise
-
-# Sweep every configured profile
-python timbre.py batch ./samples --all-profiles
-
-# Inspect one profile in detail
 python timbre.py profile inspect precise
 python timbre.py profile inspect precise --json
+
+# Run one explicit profile
+python timbre.py analyze samples/0_sample.wav --profile precise
+python timbre.py batch ./samples --profile fast
 ```
 
 With the default output settings, this produces separate directories such as:
@@ -781,6 +746,10 @@ python timbre.py batch ./samples --profile fast --validate
 python timbre.py analyze samples/0_sample.wav --validate \
   --validate-backend openai --validate-model gpt-5.4-mini
 ```
+
+Inline `--validate` checks the in-memory generated record before any analysis
+files are written. Use `timbre validate --input ...` when you want to review
+previously saved JSON artifacts offline.
 
 ### `config/vocabulary.yaml`
 

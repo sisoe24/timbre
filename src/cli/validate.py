@@ -1,34 +1,9 @@
 """
-LLM-as-Judge validator for CLAP-generated UCS audio analysis records.
+LLM-as-Judge validator for generated Timbre analysis records.
 
-Reads JSON output files produced by the audio analyzer and passes each
-record to an LLM to check for internal consistency, keyword quality,
-category correctness, and description accuracy.
-
-Supports two backends:
-  - Ollama  (local, free, requires Ollama server running)
-  - OpenAI  (cloud, requires OPENAI_API_KEY env var)
-
-Two modes:
-  - audit       : produces a validation report, original files untouched
-  - autocorrect : produces corrected JSON records alongside the report
-
-Usage
------
-  # Audit a single file (Ollama):
-  timbre validate --input outputs/metal_impact_01.json
-
-  # Audit a directory (OpenAI):
-  timbre validate --input outputs/ --backend openai
-
-  # Override the model for the chosen backend:
-  timbre validate --input outputs/ --backend openai --model gpt-5.4-mini
-
-  # Auto-correct mode:
-  timbre validate --input outputs/ --mode autocorrect
-
-  # Save report to a custom path:
-  timbre validate --input outputs/ --report out/validation_report.json
+Offline mode reads saved JSON artifacts from disk. Inline validation in
+`analyze` and `batch` calls the same validation helpers on in-memory records
+before writing outputs.
 """
 
 from __future__ import annotations
@@ -36,6 +11,7 @@ from __future__ import annotations
 import sys
 import json
 import logging
+from typing import Any, Iterable
 from pathlib import Path
 
 import click
@@ -49,13 +25,7 @@ from timbre.config_loader import load_config
 console = Console()
 logger = logging.getLogger(__name__)
 
-
 TEMP = 0.1
-"""Defualt model temperature for consistent output."""
-
-# ---------------------------------------------------------------------------
-# Prompt
-# ---------------------------------------------------------------------------
 
 SYSTEM_PROMPT = """\
 You are an expert audio metadata reviewer specialising in the Universal Category System (UCS) v8.2.1.
@@ -98,21 +68,19 @@ If nothing is wrong, return an empty issues list and consistency_score of 1.0.
 
 
 def build_user_message(record: dict) -> str:
-    """Format the record as a clean prompt message."""
+    """Format a record as a validation prompt."""
     relevant = {k: record.get(k) for k in [
         'file_name', 'category', 'subcategory', 'cat_id', 'category_full',
         'fx_name', 'description', 'keywords', 'sound_events', 'confidence',
         'evidence', 'description_details', 'mapping_diagnostics', 'llm_provenance',
     ]}
-    return f"Please review this audio analysis record:\n\n```json\n{json.dumps(relevant, indent=2)}\n```"
+    return (
+        'Please review this audio analysis record:\n\n'
+        f"```json\n{json.dumps(relevant, indent=2)}\n```"
+    )
 
-
-# ---------------------------------------------------------------------------
-# Backends
-# ---------------------------------------------------------------------------
 
 def query_ollama(record: dict, model: str = 'llama3.1:8b', temp: float = TEMP) -> dict:
-    """Send a record to Ollama and return the parsed validation result."""
     payload, _ = complete_json(
         backend='ollama',
         model=model,
@@ -125,7 +93,6 @@ def query_ollama(record: dict, model: str = 'llama3.1:8b', temp: float = TEMP) -
 
 
 def query_openai(record: dict, model: str = 'gpt-4o', temp: float = TEMP) -> dict:
-    """Send a record to OpenAI and return the parsed validation result."""
     payload, _ = complete_json(
         backend='openai',
         model=model,
@@ -138,7 +105,6 @@ def query_openai(record: dict, model: str = 'gpt-4o', temp: float = TEMP) -> dic
 
 
 def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6', temp: float = TEMP) -> dict:
-    """Send a record to Anthropic Claude and return the parsed validation result."""
     payload, _ = complete_json(
         backend='anthropic',
         model=model,
@@ -150,33 +116,15 @@ def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6', temp: float 
     return payload
 
 
-def _parse_llm_response(raw: str) -> dict:
-    """Extract and parse JSON from the LLM response."""
-    raw = raw.strip()
-    # Strip markdown code fences if model ignored the instruction
-    if raw.startswith('```'):
-        lines = raw.split('\n')
-        raw = '\n'.join(lines[1:-1]) if lines[-1].strip() == '```' else '\n'.join(lines[1:])
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse LLM response as JSON: {e}\nRaw:\n{raw}")
-        return {'error': 'Failed to parse LLM response', 'raw': raw}
-
-
-# ---------------------------------------------------------------------------
-# File handling
-# ---------------------------------------------------------------------------
-
 def load_records(input_path: Path) -> list[tuple[Path, dict]]:
     """Load one or more JSON records from a file or directory."""
-    records = []
+    records: list[tuple[Path, dict]] = []
     if input_path.is_file():
-        with open(input_path) as f:
+        with open(input_path, encoding='utf-8') as f:
             records.append((input_path, json.load(f)))
     elif input_path.is_dir():
         for p in sorted(input_path.glob('*.json')):
-            with open(p) as f:
+            with open(p, encoding='utf-8') as f:
                 records.append((p, json.load(f)))
     else:
         console.print(f"[red]Input path not found: {input_path}[/red]")
@@ -185,7 +133,7 @@ def load_records(input_path: Path) -> list[tuple[Path, dict]]:
 
 
 def apply_corrections(original: dict, validation: dict) -> dict:
-    """Merge LLM suggestions back into a corrected record."""
+    """Merge validator suggestions into a corrected record copy."""
     corrected = original.copy()
     if validation.get('suggested_keywords'):
         corrected['keywords'] = validation['suggested_keywords']
@@ -195,39 +143,102 @@ def apply_corrections(original: dict, validation: dict) -> dict:
         corrected['subcategory'] = validation['suggested_subcategory']
     if validation.get('suggested_fx_name'):
         corrected['fx_name'] = validation['suggested_fx_name']
+    if validation.get('suggested_filename'):
+        corrected['suggested_filename'] = validation['suggested_filename']
     return corrected
 
 
-# ---------------------------------------------------------------------------
-# Reporting
-# ---------------------------------------------------------------------------
-
 def print_summary(results: list[dict]) -> None:
-    """Print a rich summary table to the terminal."""
+    """Print a rich validation summary table."""
     table = Table(title='CLAP Validation Summary', show_lines=True)
     table.add_column('File', style='cyan', no_wrap=True)
     table.add_column('Score', justify='center')
     table.add_column('Issues', justify='center')
     table.add_column('Notes', style='dim')
 
-    for r in results:
-        score = r.get('consistency_score', 0.0)
+    for result in results:
+        score = result.get('consistency_score', 0.0)
         score_str = f"{score:.2f}"
         color = 'green' if score >= 0.85 else ('yellow' if score >= 0.6 else 'red')
-        issues = len(r.get('issues', []))
+        issues = len(result.get('issues', []))
         table.add_row(
-            r.get('file_name', '?'),
+            result.get('file_name', '?'),
             f"[{color}]{score_str}[/{color}]",
             str(issues),
-            r.get('notes', '')[:80],
+            result.get('notes', '')[:80],
         )
 
     console.print(table)
 
 
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
+def validate_record(
+    record: Any,
+    *,
+    backend: str,
+    model: str | None,
+    mode: str,
+    temp: float = TEMP,
+) -> tuple[dict, dict]:
+    """Validate a single in-memory record and return `(validation, original_dict)`."""
+    record_dict = _coerce_record_dict(record)
+    default_models = {
+        'ollama': 'qwen3.5-validator',
+        'openai': 'gpt-4o',
+        'anthropic': 'claude-sonnet-4-6',
+    }
+    selected_model = model or default_models[backend]
+    query_fn = {
+        'ollama': query_ollama,
+        'openai': query_openai,
+        'anthropic': query_anthropic,
+    }[backend]
+    validation = query_fn(record_dict, model=selected_model, temp=temp)
+    validation['file_name'] = record_dict.get('file_name', validation.get('file_name', '?'))
+    validation['backend'] = backend
+    validation['model'] = selected_model
+    validation['mode'] = mode
+    validation['analysis_provenance'] = record_dict.get('analysis_provenance', {})
+    return validation, record_dict
+
+
+def validate_records(
+    records: Iterable[Any],
+    *,
+    backend: str,
+    model: str | None,
+    mode: str,
+    temp: float = TEMP,
+) -> list[tuple[dict, dict]]:
+    """Validate several in-memory records."""
+    return [
+        validate_record(record, backend=backend, model=model, mode=mode, temp=temp)
+        for record in records
+    ]
+
+
+def maybe_write_validation_report(
+    results: list[dict],
+    *,
+    report: Path | None,
+    config: dict | None = None,
+) -> Path | None:
+    """Write a validation report only when explicitly requested or configured."""
+    should_write = report is not None or bool(
+        (config or {}).get('output', {}).get('save_validation_report'))
+    if not should_write:
+        return None
+
+    report_path = report
+    if report_path is None:
+        if config is None:
+            raise ValueError('A config dict is required when report is not explicitly provided.')
+        report_path = resolve_output_paths(config)['validation_report']
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(report_path, 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=2)
+    return report_path
+
 
 def run_validation(
     input_path: Path,
@@ -239,18 +250,8 @@ def run_validation(
     profile: str | None,
     temp: float = TEMP,
 ) -> None:
-    """Run the validation workflow."""
+    """Run offline validation against saved JSON files."""
     cfg = load_config(config_path=config, profile_name=profile)
-    default_models = {
-        'ollama': 'qwen3.5-validator',
-        'openai': 'gpt-4o',
-        'anthropic': 'claude-sonnet-4-6',
-    }
-    model = model or default_models[backend]
-
-    query_fn = {'ollama': query_ollama, 'openai': query_openai,
-                'anthropic': query_anthropic}[backend]
-
     records = load_records(input_path)
 
     inferred_profile = _infer_profile_name(records)
@@ -260,67 +261,67 @@ def run_validation(
         except ValueError:
             pass
 
-    console.print(
-        f"\n[bold]Validating {len(records)} record(s): {backend} / {model} / "
-        f"profile: {cfg['profile_name']} / temp: {temp}[/bold]\n")
+    default_models = {
+        'ollama': 'qwen3.5-validator',
+        'openai': 'gpt-4o',
+        'anthropic': 'claude-sonnet-4-6',
+    }
+    selected_model = model or default_models[backend]
 
-    all_results = []
-    corrected_records = []
+    console.print(
+        f"\n[bold]Validating {len(records)} record(s): {backend} / {selected_model} / "
+        f"profile: {cfg['profile_name']} / temp: {temp}[/bold]\n"
+    )
+
+    all_results: list[dict] = []
+    corrected_records: list[tuple[Path, dict]] = []
 
     for path, record in records:
         file_name = record.get('file_name', path.name)
         console.print(f"  Validating [cyan]{file_name}[/cyan]...", end=' ')
-
         try:
-            validation = query_fn(record, model=model, temp=temp)
-            validation['file_name'] = file_name
-            validation['backend'] = backend
-            validation['model'] = model
-            validation['analysis_provenance'] = record.get('analysis_provenance', {})
+            validation, record_dict = validate_record(
+                record,
+                backend=backend,
+                model=selected_model,
+                mode=mode,
+                temp=temp,
+            )
             all_results.append(validation)
-
             score = validation.get('consistency_score', 0.0)
             issues = len(validation.get('issues', []))
             console.print(f"score={score:.2f}  issues={issues}")
 
             if mode == 'autocorrect':
-                corrected = apply_corrections(record, validation)
-                corrected_records.append((path, corrected))
-
-        except Exception as e:
-            console.print(f"[red]ERROR: {e}[/red]")
+                corrected_records.append((path, apply_corrections(record_dict, validation)))
+        except Exception as exc:
+            console.print(f"[red]ERROR: {exc}[/red]")
             all_results.append({
                 'file_name': file_name,
                 'backend': backend,
-                'model': model,
-                'error': str(e),
+                'model': selected_model,
+                'error': str(exc),
             })
 
-    # Print summary table
     console.print()
     print_summary(all_results)
 
-    # Save report
-    if report:
-        report_path = report
-    else:
+    report_path = report
+    if report_path is None:
         report_path = _default_report_path(
             resolve_output_paths(cfg)['validation_report'],
             input_path,
             records,
         )
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(report_path, 'w') as f:
-        json.dump(all_results, f, indent=2)
+    maybe_write_validation_report(all_results, report=report_path)
     console.print(f"\n[green]Report saved:[/green] {report_path}")
 
-    # Save corrected records
     if mode == 'autocorrect' and corrected_records:
         corrected_dir = input_path.parent / 'corrected'
         corrected_dir.mkdir(exist_ok=True)
         for orig_path, corrected in corrected_records:
             out_path = corrected_dir / orig_path.name
-            with open(out_path, 'w') as f:
+            with open(out_path, 'w', encoding='utf-8') as f:
                 json.dump(corrected, f, indent=2)
         console.print(f"[green]Corrected records saved to:[/green] {corrected_dir}/")
 
@@ -386,7 +387,7 @@ def main(
     report: Path | None,
     temp: float = TEMP,
 ) -> None:
-    """LLM-as-Judge validator for CLAP audio analysis records."""
+    """Validate previously saved JSON analysis records."""
     run_validation(
         input_path=input_path,
         backend=backend,
@@ -397,6 +398,16 @@ def main(
         mode=mode,
         report=report,
     )
+
+
+def _coerce_record_dict(record: Any) -> dict:
+    if isinstance(record, dict):
+        return record
+    if hasattr(record, 'to_full_dict'):
+        return record.to_full_dict()
+    if hasattr(record, 'model_dump'):
+        return record.model_dump()
+    raise TypeError(f'Unsupported record type for validation: {type(record)!r}')
 
 
 def _infer_profile_name(records: list[tuple[Path, dict]]) -> str | None:

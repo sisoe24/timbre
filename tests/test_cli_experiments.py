@@ -54,32 +54,22 @@ profiles:
     )
 
 
-def test_analyze_lists_profiles_without_audio_argument(tmp_path: Path) -> None:
-    config_path = tmp_path / 'config.yaml'
-    vocab_path = tmp_path / 'vocabulary.yaml'
-    _write_config(config_path)
-    _write_vocab(vocab_path)
-
+def test_analyze_help_omits_legacy_profile_listing_flags() -> None:
     runner = CliRunner()
-    result = runner.invoke(analyze_main, ['--config', str(config_path), '--list-profiles'])
+    result = runner.invoke(analyze_main, ['--help'])
 
     assert result.exit_code == 0
-    assert 'balanced' in result.output
-    assert 'fast' in result.output
+    assert '--list-profiles' not in result.output
+    assert '--all-profiles' not in result.output
 
 
-def test_batch_lists_profiles_without_input_argument(tmp_path: Path) -> None:
-    config_path = tmp_path / 'config.yaml'
-    vocab_path = tmp_path / 'vocabulary.yaml'
-    _write_config(config_path)
-    _write_vocab(vocab_path)
-
+def test_batch_help_omits_legacy_profile_listing_flags() -> None:
     runner = CliRunner()
-    result = runner.invoke(batch_main, ['--config', str(config_path), '--list-profiles'])
+    result = runner.invoke(batch_main, ['--help'])
 
     assert result.exit_code == 0
-    assert 'balanced' in result.output
-    assert 'fast' in result.output
+    assert '--list-profiles' not in result.output
+    assert '--all-profiles' not in result.output
 
 
 def test_profile_list_renders_metadata(tmp_path: Path) -> None:
