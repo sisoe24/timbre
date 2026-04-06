@@ -1,11 +1,9 @@
 """
 pipeline.py
 -----------
-Main analysis pipeline. Orchestrates all Phase 1 components:
+Evidence-first audio analysis pipeline:
 
-  AudioFile → Features → CLAP Tags → Events → Description → Record
-
-Single entry point for both the single-file CLI and the batch processor.
+  AudioFile -> Features -> CLAP Evidence -> Description -> Metadata -> Record
 """
 
 from __future__ import annotations
@@ -15,53 +13,51 @@ import logging
 from typing import Dict, List, Optional
 from pathlib import Path
 
-from .output.schema import (AudioMetadata, AcousticSummary, AnalysisProvenance,
-                            AudioAnalysisRecord, build_suggested_filename)
+from .output.schema import (AudioMetadata, EvidenceEvent, LLMProvenance,
+                            EvidenceBundle, PromptEvidence, AcousticSummary,
+                            AnalysisProvenance, DescriptionDetails,
+                            MappingDiagnostics, AudioAnalysisRecord,
+                            build_suggested_filename)
 from .models.clap_tagger import CLAP_SAMPLE_RATE, CLAPTagger
 from .models.label_cache import LabelEmbeddingCache, build_cache_metadata
+from .analysis.prompt_bank import build_descriptive_prompt_bank
 from .ingestion.audio_loader import AudioFile, load_audio
 from .analysis.event_detector import (SoundEvent, detect_events,
                                       detect_events_from_full_clip)
+from .analysis.metadata_mapper import map_metadata
 from .analysis.feature_extractor import AcousticFeatures, extract_features
-from .analysis.description_synthesizer import (DescriptionResult,
-                                               synthesize_description)
+from .analysis.description_generator import generate_description
 
 logger = logging.getLogger(__name__)
 
 
 class AudioAnalysisPipeline:
-    """
-    Orchestrates the full Phase 1 audio analysis pipeline.
-
-    Typical usage
-    -------------
-        pipeline = AudioAnalysisPipeline(config)
-        pipeline.load_model()
-        record = pipeline.analyze_file("path/to/clip.wav")
-
-    Parameters
-    ----------
-    config : dict with keys from config/config.yaml
-    """
+    """Orchestrates the full evidence-first audio analysis pipeline."""
 
     def __init__(self, config: dict) -> None:
         self.config = config
         self.tagger: Optional[CLAPTagger] = None
         self.cache: Optional[LabelEmbeddingCache] = None
 
-        # Load vocabulary from config (UCS lookups)
         self.candidate_labels: List[str] = config.get('candidate_labels', [])
         self.label_to_category: Dict[str, str] = config.get('label_to_category', {})
         self.label_to_subcategory: Dict[str, str] = config.get('label_to_subcategory', {})
         self.label_to_cat_id: Dict[str, str] = config.get('label_to_cat_id', {})
         self.label_to_category_full: Dict[str, str] = config.get('label_to_category_full', {})
+        self.taxonomy: Dict[str, Dict[str, Dict[str, str]]] = config.get('taxonomy', {})
+        self.prompt_entries = build_descriptive_prompt_bank(
+            candidate_labels=self.candidate_labels,
+            label_to_category=self.label_to_category,
+            label_to_subcategory=self.label_to_subcategory,
+            label_to_cat_id=self.label_to_cat_id,
+            label_to_category_full=self.label_to_category_full,
+        )
+        self.prompt_label_index = {entry.prompt: entry for entry in self.prompt_entries}
 
-        # UCS identity fields
         self.ucs_creator_id: str = config.get('ucs_creator_id', 'UNKNOWN')
         self.ucs_source_id: str = config.get('ucs_source_id', 'NONE')
         self.ucs_user_data: str = config.get('ucs_user_data', '')
 
-        # Pipeline settings
         self.target_sr: int = config.get('target_sr', CLAP_SAMPLE_RATE)
         self.window_seconds: float = config.get('window_seconds', 2.0)
         self.hop_seconds: float = config.get('hop_seconds', 0.5)
@@ -70,18 +66,8 @@ class AudioAnalysisPipeline:
         self.windowed_min_duration: float = config.get('windowed_min_duration', 2.0)
         self.top_k_categories: int = config.get('top_k_categories', 5)
 
-    # ------------------------------------------------------------------
-    # Model loading
-    # ------------------------------------------------------------------
-
     def load_model(self) -> None:
-        """
-        Load the CLAP model and the label embedding cache.
-
-        If the cache file does not exist (or is stale) it is built
-        automatically on first run — this adds a one-time overhead of
-        ~30-60 s but makes every subsequent run significantly faster.
-        """
+        """Load CLAP and the combined label/prompt embedding cache."""
         model_id = self.config.get('model_id', 'laion/larger_clap_general')
         device = self.config.get('device', None)
         fp16 = self.config.get('fp16', True)
@@ -89,28 +75,26 @@ class AudioAnalysisPipeline:
         self.tagger = CLAPTagger(model_id=model_id, device=device, fp16=fp16)
         self.tagger.load()
 
-        # --- Label embedding cache -------------------------------------
         cache_path = self.config.get('label_cache_path')
         if cache_path:
             self.cache = LabelEmbeddingCache(cache_path)
-            n_labels = len(self.candidate_labels)
             expected_metadata = {
                 'model_id': self.config.get('model_id'),
                 'vocab_sha256': self.config.get('vocab_sha256'),
                 'cache_fingerprint': self.config.get('cache_fingerprint'),
+                'prompt_bank_version': self.config.get('prompt_bank_version'),
             }
-
             if self.cache.is_valid(
-                expected_label_count=n_labels,
+                expected_label_count=len(self.candidate_labels),
                 expected_metadata=expected_metadata,
             ):
                 self.cache.load()
-                logger.info('Label cache loaded (%d labels).', n_labels)
+                self.prompt_label_index = {
+                    entry['prompt']: entry for entry in self.cache.prompt_entries
+                }
+                logger.info('Label cache loaded (%d labels).', len(self.candidate_labels))
             else:
-                logger.info(
-                    'Label cache missing or stale — building now '
-                    '(one-time cost, ~30-60 s)…'
-                )
+                logger.info('Label cache missing or stale; rebuilding.')
                 self.cache.build(
                     tagger=self.tagger,
                     candidate_labels=self.candidate_labels,
@@ -120,105 +104,69 @@ class AudioAnalysisPipeline:
                     label_to_category_full=self.label_to_category_full,
                     metadata=build_cache_metadata(self.config, self.candidate_labels),
                 )
-                logger.info('Label cache built and saved to %s.', cache_path)
+                self.prompt_label_index = {
+                    entry['prompt']: entry for entry in self.cache.prompt_entries
+                }
         else:
             logger.warning(
-                'label_cache_path not set in config — falling back to '
-                "slow per-file label encoding. Add 'label_cache_path' to "
-                'config.yaml to enable the embedding cache.'
+                'label_cache_path not set; descriptive prompt scoring will be slow.'
             )
-
-    # ------------------------------------------------------------------
-    # Single-file analysis
-    # ------------------------------------------------------------------
 
     def analyze_file(
         self,
         path: str | Path,
         audio_file: Optional[AudioFile] = None,
     ) -> AudioAnalysisRecord:
-        """
-        Analyze a single audio file and return an AudioAnalysisRecord.
-
-        Parameters
-        ----------
-        path       : path to the audio file
-        audio_file : pre-loaded AudioFile (skip re-loading if already loaded)
-
-        Returns
-        -------
-        AudioAnalysisRecord — complete analysis result
-        """
+        """Analyze a single audio file and return an AudioAnalysisRecord."""
         if self.tagger is None:
-            raise RuntimeError(
-                'Model not loaded. Call pipeline.load_model() first.'
-            )
+            raise RuntimeError('Model not loaded. Call pipeline.load_model() first.')
 
         t0 = time.perf_counter()
-
-        # --- 1. Load audio -----------------------------------------------
-        if audio_file is None:
-            audio_file = load_audio(str(path), target_sr=self.target_sr)
-        af = audio_file
-
+        af = audio_file or load_audio(str(path), target_sr=self.target_sr)
         logger.info('Analyzing: %s (%.2fs)', af.file_name, af.duration)
 
-        # --- 2. Extract acoustic features --------------------------------
-        features: AcousticFeatures = extract_features(af.waveform, af.sample_rate)
+        features = extract_features(af.waveform, af.sample_rate)
+        audio_embed = self.tagger.embed_audio(af.waveform, af.sample_rate)
+        full_scores = self._score_base_labels(af, audio_embed)
+        prompt_scores = self._score_prompt_bank(af, audio_embed)
+        events = self._detect_events(af, full_scores)
+        evidence = self._build_evidence_bundle(full_scores, prompt_scores, events, features)
 
-        # --- 3. Full-clip CLAP classification ----------------------------
-        if self.cache is not None:
-            # Fast path: embed audio once, score against cached text matrix
-            audio_embed = self.tagger.embed_audio(af.waveform, af.sample_rate)
-            full_scores: Dict[str, float] = self.cache.classify(
-                audio_embed, top_k_categories=self.top_k_categories
-            )
-        else:
-            # Legacy path: re-encode all labels on every file (slow)
-            full_scores = self.tagger.classify(
-                waveform=af.waveform,
-                sr=af.sample_rate,
-                candidate_labels=self.candidate_labels,
-            )
-
-        logger.debug(
-            'Top label: %s (%.3f)',
-            max(full_scores, key=full_scores.get),
-            max(full_scores.values()),
+        description_details, description_provenance = generate_description(
+            evidence,
+            backend=self.config.get('description_backend', 'openai'),
+            model=self.config.get('description_model', 'gpt-4o-mini'),
+            temperature=self.config.get('description_temperature', 0.1),
+            retries=self.config.get('llm_retry_count', 1),
         )
-
-        # --- 4. Event detection (sliding window or single-clip fallback) -
-        events: List[SoundEvent] = self._detect_events(
-            af, full_scores, features, audio_embed if self.cache else None,
-            top_k_categories=self.top_k_categories,
-        )
-
-        # --- 5. Synthesize description -----------------------------------
-        # Prefer lookup dicts from the cache (they match what was scored)
-        l2cat = self.cache.label_to_category if self.cache else self.label_to_category
-        l2sub = self.cache.label_to_subcategory if self.cache else self.label_to_subcategory
-        l2catid = self.cache.label_to_cat_id if self.cache else self.label_to_cat_id
-        l2full = self.cache.label_to_category_full if self.cache else self.label_to_category_full
-
-        description: DescriptionResult = synthesize_description(
-            file_name=af.file_name,
-            full_scores=full_scores,
-            events=events,
-            features=features,
-            label_to_category=l2cat,
-            label_to_subcategory=l2sub,
-            label_to_cat_id=l2catid,
-            label_to_category_full=l2full,
+        mapped, mapping_diagnostics, mapping_provenance = map_metadata(
+            evidence,
+            description_details,
+            taxonomy=self.taxonomy,
+            backend=self.config.get('metadata_backend', 'openai'),
+            model=self.config.get('metadata_model', 'gpt-4o-mini'),
+            temperature=self.config.get('metadata_temperature', 0.1),
+            retries=self.config.get('llm_retry_count', 1),
         )
 
         elapsed = time.perf_counter() - t0
-        # --- 6. Assemble the output record -------------------------------
         record = self._assemble_record(
-            af,
-            features,
-            full_scores,
-            events,
-            description,
+            af=af,
+            features=features,
+            evidence=evidence,
+            description_details=description_details,
+            mapped=mapped,
+            mapping_diagnostics=mapping_diagnostics,
+            llm_provenance=LLMProvenance(
+                description_backend=description_provenance['backend'],
+                description_model=description_provenance['model'],
+                description_attempts=description_provenance['attempts'],
+                description_repaired=description_provenance['repaired'],
+                metadata_backend=mapping_provenance['backend'],
+                metadata_model=mapping_provenance['model'],
+                metadata_attempts=mapping_provenance['attempts'],
+                metadata_repaired=mapping_provenance['repaired'],
+            ),
             analysis_elapsed_seconds=elapsed,
         )
         logger.info(
@@ -227,12 +175,7 @@ class AudioAnalysisPipeline:
             record.confidence,
             record.analysis_provenance.analysis_elapsed_seconds,
         )
-
         return record
-
-    # ------------------------------------------------------------------
-    # Batch analysis
-    # ------------------------------------------------------------------
 
     def analyze_batch(
         self,
@@ -240,63 +183,48 @@ class AudioAnalysisPipeline:
         skip_errors: bool = True,
         progress_callback=None,
     ) -> List[AudioAnalysisRecord]:
-        """
-        Analyze a list of audio files.
-
-        Parameters
-        ----------
-        paths            : list of paths to audio files
-        skip_errors      : if True, log errors and continue; else raise
-        progress_callback: optional callable(current, total, file_name)
-
-        Returns
-        -------
-        List of AudioAnalysisRecord (only successful results)
-        """
+        """Analyze a list of audio files."""
         if self.tagger is None:
             raise RuntimeError('Call pipeline.load_model() first.')
 
         results: List[AudioAnalysisRecord] = []
         total = len(paths)
-
         for i, path in enumerate(paths, start=1):
             if progress_callback:
                 progress_callback(i, total, Path(path).name)
             try:
-                record = self.analyze_file(path)
-                results.append(record)
+                results.append(self.analyze_file(path))
             except Exception as exc:
                 if skip_errors:
                     logger.error("Failed '%s': %s", Path(path).name, exc)
                 else:
                     raise
-
-        logger.info(
-            'Batch complete: %d/%d files analyzed successfully.',
-            len(results),
-            total,
-        )
+        logger.info('Batch complete: %d/%d files analyzed successfully.', len(results), total)
         return results
 
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
+    def _score_base_labels(self, af: AudioFile, audio_embed) -> Dict[str, float]:
+        if self.cache is not None:
+            return self.cache.classify(audio_embed, top_k_categories=self.top_k_categories)
+        return self.tagger.classify(
+            waveform=af.waveform,
+            sr=af.sample_rate,
+            candidate_labels=self.candidate_labels,
+        )
 
-    def _detect_events(
-        self,
-        af: AudioFile,
-        full_scores: Dict[str, float],
-        features: AcousticFeatures,
-        audio_embed=None,  # pre-computed embedding when cache is active
-        top_k_categories: int = 5,
-    ) -> List[SoundEvent]:
-        """Choose windowed or single-clip event detection based on duration."""
-        if (
-            self.use_windowed_analysis
-            and af.duration >= self.windowed_min_duration
-        ):
+    def _score_prompt_bank(self, af: AudioFile, audio_embed) -> Dict[str, float]:
+        if self.cache is not None:
+            return self.cache.classify_prompts(audio_embed, top_k_categories=self.top_k_categories)
+        prompt_labels = list(self.prompt_label_index.keys())
+        return self.tagger.classify(
+            waveform=af.waveform,
+            sr=af.sample_rate,
+            candidate_labels=prompt_labels,
+        )
+
+    def _detect_events(self, af: AudioFile, full_scores: Dict[str, float]) -> List[SoundEvent]:
+        if self.use_windowed_analysis and af.duration >= self.windowed_min_duration:
             try:
-                events = detect_events(
+                return detect_events(
                     waveform=af.waveform,
                     sr=af.sample_rate,
                     tagger=self.tagger,
@@ -305,18 +233,15 @@ class AudioAnalysisPipeline:
                     window_seconds=self.window_seconds,
                     hop_seconds=self.hop_seconds,
                     min_confidence=self.min_confidence,
-                    cache=self.cache,  # None → legacy path; set → fast path
-                    top_k_categories=top_k_categories,
+                    cache=self.cache,
+                    top_k_categories=self.top_k_categories,
                 )
-                return events
             except Exception as exc:
                 logger.warning(
                     "Windowed event detection failed for '%s': %s. Using full-clip fallback.",
                     af.file_name,
                     exc,
                 )
-
-        # Fallback: single-clip event list from full-clip CLAP scores
         return detect_events_from_full_clip(
             full_scores=full_scores,
             label_to_category=self.label_to_category,
@@ -324,18 +249,103 @@ class AudioAnalysisPipeline:
             min_confidence=self.min_confidence,
         )
 
+    def _build_evidence_bundle(
+        self,
+        full_scores: Dict[str, float],
+        prompt_scores: Dict[str, float],
+        events: List[SoundEvent],
+        features: AcousticFeatures,
+    ) -> EvidenceBundle:
+        band_scores = {
+            'sub_bass': features.sub_bass_energy,
+            'bass': features.bass_energy,
+            'low_mid': features.low_mid_energy,
+            'mid': features.mid_energy,
+            'high': features.high_energy,
+            'air': features.air_energy,
+        }
+        dominant_band = max(band_scores, key=band_scores.get)
+
+        prompt_matches: list[PromptEvidence] = []
+        for prompt, score in sorted(prompt_scores.items(), key=lambda item: item[1], reverse=True)[:8]:
+            entry = self.prompt_label_index.get(prompt)
+            if entry is None:
+                continue
+            if isinstance(entry, dict):
+                prompt_matches.append(
+                    PromptEvidence(
+                        prompt=entry['prompt'],
+                        base_label=entry['base_label'],
+                        category=entry['category'],
+                        subcategory=entry['subcategory'],
+                        cat_id=entry['cat_id'],
+                        category_full=entry['category_full'],
+                        modifiers=list(entry.get('modifiers', [])),
+                        score=round(float(score), 6),
+                    )
+                )
+            else:
+                prompt_matches.append(
+                    PromptEvidence(
+                        prompt=entry.prompt,
+                        base_label=entry.base_label,
+                        category=entry.category,
+                        subcategory=entry.subcategory,
+                        cat_id=entry.cat_id,
+                        category_full=entry.category_full,
+                        modifiers=list(entry.modifiers),
+                        score=round(float(score), 6),
+                    )
+                )
+
+        event_items = [
+            EvidenceEvent(
+                label=event.label,
+                category=event.category,
+                start_time=round(event.start_time, 3),
+                end_time=round(event.end_time, 3),
+                confidence=round(event.confidence, 6),
+            )
+            for event in events
+        ]
+
+        acoustic_flags: list[str] = []
+        if features.is_percussive:
+            acoustic_flags.append('percussive')
+        if features.is_tonal:
+            acoustic_flags.append('tonal')
+        if features.is_noisy:
+            acoustic_flags.append('noisy')
+        if features.is_low_frequency_heavy:
+            acoustic_flags.append('low_frequency_heavy')
+        if features.is_broadband:
+            acoustic_flags.append('broadband')
+        if features.silence_ratio > 0.35:
+            acoustic_flags.append('sparse')
+
+        return EvidenceBundle(
+            base_label_scores=dict(
+                (label, round(float(score), 6))
+                for label, score in sorted(full_scores.items(), key=lambda item: item[1], reverse=True)[:20]
+            ),
+            descriptive_prompt_matches=prompt_matches,
+            sound_events=event_items,
+            acoustic_flags=acoustic_flags,
+            dominant_frequency_band=dominant_band,
+        )
+
     def _assemble_record(
         self,
+        *,
         af: AudioFile,
         features: AcousticFeatures,
-        full_scores: Dict[str, float],
-        events: List[SoundEvent],
-        description: DescriptionResult,
+        evidence: EvidenceBundle,
+        description_details: DescriptionDetails,
+        mapped: dict,
+        mapping_diagnostics: MappingDiagnostics,
+        llm_provenance: LLMProvenance,
         analysis_elapsed_seconds: float,
     ) -> AudioAnalysisRecord:
-        """Build the final AudioAnalysisRecord from all pipeline outputs."""
-
-        # Determine dominant frequency band
         band_scores = {
             'sub_bass': features.sub_bass_energy,
             'bass': features.bass_energy,
@@ -356,7 +366,6 @@ class AudioAnalysisPipeline:
             num_channels=af.num_channels,
             num_samples=af.num_samples,
         )
-
         acoustic_summary = AcousticSummary(
             rms_mean=round(features.rms_mean, 6),
             spectral_centroid_mean_hz=round(features.spectral_centroid_mean, 1),
@@ -368,7 +377,6 @@ class AudioAnalysisPipeline:
             dynamic_range_db=round(features.dynamic_range_db, 2),
             dominant_frequency_band=dominant_band,
         )
-
         analysis_provenance = AnalysisProvenance(
             model_id=self.config.get('model_id', 'unknown'),
             config_path=self.config.get('config_path', 'unknown'),
@@ -379,42 +387,83 @@ class AudioAnalysisPipeline:
             profile_fingerprint=self.config.get('profile_fingerprint'),
             cache_path=self.config.get('label_cache_path'),
             cache_fingerprint=self.config.get('cache_fingerprint'),
+            prompt_bank_version=self.config.get('prompt_bank_version'),
+            prompt_bank_fingerprint=self.config.get('prompt_bank_fingerprint'),
         )
 
-        # Top-10 CLAP scores for the record
-        top_labels = dict(
-            sorted(full_scores.items(), key=lambda x: x[1], reverse=True)[:10]
-        )
-
-        # Build UCS suggested filename
         suggested_filename = build_suggested_filename(
-            cat_id=description.cat_id,
-            fx_name=description.fx_name,
+            cat_id=mapped['cat_id'],
+            fx_name=mapped['fx_name'],
             creator_id=self.ucs_creator_id,
             source_id=self.ucs_source_id,
             user_data=self.ucs_user_data,
         )
+        top_labels = dict(list(evidence.base_label_scores.items())[:10])
 
         return AudioAnalysisRecord(
             file_name=af.file_name,
-            # UCS core
-            category=description.category,
-            subcategory=description.subcategory,
-            cat_id=description.cat_id,
-            category_full=description.category_full,
-            fx_name=description.fx_name,
-            description=description.description,
-            keywords=description.keywords,
-            sound_events=description.sound_events,
-            confidence=description.confidence,
-            # UCS identity
+            category=mapped['category'],
+            subcategory=mapped['subcategory'],
+            cat_id=mapped['cat_id'],
+            category_full=mapped['category_full'],
+            fx_name=mapped['fx_name'],
+            description=description_details.description,
+            keywords=mapped['keywords'],
+            sound_events=mapped['sound_events'],
+            confidence=self._compute_confidence(evidence, mapped, mapping_diagnostics),
             creator_id=self.ucs_creator_id,
             source_id=self.ucs_source_id,
             user_data=self.ucs_user_data,
             suggested_filename=suggested_filename,
-            # Internal
             top_labels=top_labels,
+            evidence=evidence,
+            description_details=description_details,
+            mapping_diagnostics=mapping_diagnostics,
+            llm_provenance=llm_provenance,
             metadata=metadata,
             acoustic_summary=acoustic_summary,
             analysis_provenance=analysis_provenance,
         )
+
+    def _compute_confidence(
+        self,
+        evidence: EvidenceBundle,
+        mapped: dict,
+        diagnostics: MappingDiagnostics,
+    ) -> float:
+        scores = list(evidence.base_label_scores.values())
+        if not scores:
+            return 0.0
+        primary_score = scores[0]
+        runner_up = scores[1] if len(scores) > 1 else 0.0
+        margin = max(0.0, primary_score - runner_up)
+
+        prompt_support_hits = [
+            item for item in evidence.descriptive_prompt_matches
+            if item.category == mapped['category'] and item.subcategory == mapped['subcategory']
+        ]
+        prompt_support = (
+            sum(item.score for item in prompt_support_hits[:3]
+                ) / max(1, len(prompt_support_hits[:3]))
+            if prompt_support_hits else 0.0
+        )
+
+        event_hits = [
+            event for event in evidence.sound_events
+            if event.category == mapped['category']
+        ]
+        event_support = len(event_hits) / max(1, len(evidence.sound_events)
+                                              ) if evidence.sound_events else 0.5
+
+        conflict_penalty = min(0.3, 0.08 * len(diagnostics.conflict_flags))
+        alt_penalty = 0.05 * min(3, len(diagnostics.ranked_alternatives))
+
+        confidence = (
+            0.45 * primary_score
+            + 0.20 * min(1.0, margin * 5)
+            + 0.20 * min(1.0, prompt_support * 6)
+            + 0.15 * event_support
+            - conflict_penalty
+            - alt_penalty
+        )
+        return round(max(0.0, min(1.0, confidence)), 3)

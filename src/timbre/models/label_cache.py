@@ -35,6 +35,8 @@ from datetime import datetime, timezone
 import numpy as np
 import torch
 
+from ..analysis.prompt_bank import build_descriptive_prompt_bank
+
 logger = logging.getLogger(__name__)
 
 # How many top-level UCS categories to explore in Stage 2.
@@ -91,6 +93,16 @@ class LabelEmbeddingCache:
         embeddings = tagger.embed_text(candidate_labels, batch_size=batch_size)
         # embeddings: (N, D) float32, L2-normalised
 
+        prompt_entries = build_descriptive_prompt_bank(
+            candidate_labels=candidate_labels,
+            label_to_category=label_to_category,
+            label_to_subcategory=label_to_subcategory,
+            label_to_cat_id=label_to_cat_id,
+            label_to_category_full=label_to_category_full,
+        )
+        prompt_labels = [entry.prompt for entry in prompt_entries]
+        prompt_embeddings = tagger.embed_text(prompt_labels, batch_size=batch_size)
+
         # --- Build per-category index ------------------------------------
         categories: List[str] = list(dict.fromkeys(
             label_to_category[lbl] for lbl in candidate_labels
@@ -114,6 +126,28 @@ class LabelEmbeddingCache:
             centroids.append(centroid)
         category_centroids = np.stack(centroids, axis=0)  # (M, D)
 
+        prompt_category_label_indices: Dict[str, List[int]] = {c: [] for c in categories}
+        for i, entry in enumerate(prompt_entries):
+            cat = entry.category
+            if cat in prompt_category_label_indices:
+                prompt_category_label_indices[cat].append(i)
+
+        prompt_centroids = []
+        for cat in categories:
+            indices = prompt_category_label_indices[cat]
+            if not indices:
+                continue
+            centroid = prompt_embeddings[indices].mean(axis=0)
+            norm = np.linalg.norm(centroid)
+            if norm > 0:
+                centroid = centroid / norm
+            prompt_centroids.append((cat, centroid))
+
+        prompt_categories = [cat for cat, _ in prompt_centroids]
+        prompt_category_centroids = np.stack(
+            [centroid for _, centroid in prompt_centroids], axis=0
+        )
+
         logit_scale = tagger.logit_scale
 
         self._data = {
@@ -128,6 +162,12 @@ class LabelEmbeddingCache:
             'label_to_subcategory': label_to_subcategory,
             'label_to_cat_id': label_to_cat_id,
             'label_to_category_full': label_to_category_full,
+            'prompt_labels': prompt_labels,
+            'prompt_embeddings': prompt_embeddings,
+            'prompt_categories': prompt_categories,
+            'prompt_category_centroids': prompt_category_centroids,
+            'prompt_category_label_indices': prompt_category_label_indices,
+            'prompt_entries': [entry.__dict__ for entry in prompt_entries],
         }
 
         # --- Persist to disk ---------------------------------------------
@@ -161,10 +201,11 @@ class LabelEmbeddingCache:
         metadata = self.metadata
         if metadata:
             logger.info(
-                'Cache metadata: model=%s vocab=%s fingerprint=%s',
+                'Cache metadata: model=%s vocab=%s fingerprint=%s prompts=%s',
                 metadata.get('model_id', 'unknown'),
                 metadata.get('vocab_path', 'unknown'),
                 metadata.get('cache_fingerprint', 'unknown'),
+                metadata.get('prompt_count', 'unknown'),
             )
 
     def is_valid(
@@ -202,6 +243,7 @@ class LabelEmbeddingCache:
         metadata = dict(data.get('metadata', {}))
         metadata.setdefault('label_count', len(data.get('labels', [])))
         metadata.setdefault('category_count', len(data.get('categories', [])))
+        metadata.setdefault('prompt_count', len(data.get('prompt_labels', [])))
         return metadata
 
     # ------------------------------------------------------------------
@@ -261,6 +303,40 @@ class LabelEmbeddingCache:
 
         return {lbl: float(p) for lbl, p in zip(sub_labels, probs)}
 
+    def classify_prompts(
+        self,
+        audio_embedding: np.ndarray,
+        top_k_categories: int = DEFAULT_TOP_K_CATEGORIES,
+    ) -> Dict[str, float]:
+        """Score descriptive prompt candidates against an audio embedding."""
+        if self._data is None:
+            raise RuntimeError('Cache not loaded. Call load() or build() first.')
+
+        data = self._data
+        scale = data['logit_scale']
+        audio = audio_embedding
+
+        centroids = data['prompt_category_centroids']
+        cat_logits = scale * (centroids @ audio)
+        top_cat_idx = np.argsort(cat_logits)[::-1][:top_k_categories]
+        top_categories = [data['prompt_categories'][i] for i in top_cat_idx]
+
+        gathered_indices: List[int] = []
+        for cat in top_categories:
+            gathered_indices.extend(data['prompt_category_label_indices'].get(cat, []))
+
+        if not gathered_indices:
+            return {}
+
+        sub_embeds = data['prompt_embeddings'][gathered_indices]
+        sub_labels = [data['prompt_labels'][i] for i in gathered_indices]
+
+        logits = scale * (sub_embeds @ audio)
+        logits -= logits.max()
+        exp_logits = np.exp(logits)
+        probs = exp_logits / exp_logits.sum()
+        return {lbl: float(p) for lbl, p in zip(sub_labels, probs)}
+
     # ------------------------------------------------------------------
     # Lookup helpers (forwarded from cached metadata)
     # ------------------------------------------------------------------
@@ -286,12 +362,17 @@ class LabelEmbeddingCache:
         return self._data['labels']
 
     @property
+    def prompt_entries(self) -> List[Dict[str, Any]]:
+        return self._data['prompt_entries']
+
+    @property
     def metadata(self) -> Dict[str, Any]:
         if self._data is None:
             return {}
         metadata = dict(self._data.get('metadata', {}))
         metadata.setdefault('label_count', len(self._data.get('labels', [])))
         metadata.setdefault('category_count', len(self._data.get('categories', [])))
+        metadata.setdefault('prompt_count', len(self._data.get('prompt_labels', [])))
         return metadata
 
 
@@ -304,5 +385,8 @@ def build_cache_metadata(config: Dict[str, Any], candidate_labels: List[str]) ->
         'vocab_path': config.get('vocab_path'),
         'vocab_sha256': config.get('vocab_sha256'),
         'cache_fingerprint': config.get('cache_fingerprint'),
+        'prompt_bank_version': config.get('prompt_bank_version'),
+        'prompt_bank_fingerprint': config.get('prompt_bank_fingerprint'),
         'label_count': len(candidate_labels),
+        'prompt_count': config.get('descriptive_prompt_count'),
     }

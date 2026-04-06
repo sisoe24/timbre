@@ -188,6 +188,18 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
     """Format a single AudioAnalysisRecord as UCS-aligned Markdown."""
     keyword_list = '\n'.join(f"- `{k}`" for k in r.keywords)
     event_list = '\n'.join(f"{i+1}. {e}" for i, e in enumerate(r.sound_events))
+    evidence_event_list = '\n'.join(
+        f"- `{event.label}` [{event.start_time:.2f}s - {event.end_time:.2f}s] ({event.confidence:.2f})"
+        for event in (r.evidence.sound_events if r.evidence else [])
+    )
+    prompt_rows = '\n'.join(
+        f"| {item.prompt} | {item.category}/{item.subcategory} | {item.score:.3f} |"
+        for item in (r.evidence.descriptive_prompt_matches[:8] if r.evidence else [])
+    )
+    alternative_rows = '\n'.join(
+        f"- `{item.category_full}` — {item.reason or 'alternative candidate'}"
+        for item in (r.mapping_diagnostics.ranked_alternatives if r.mapping_diagnostics else [])
+    )
 
     top_labels_rows = '\n'.join(
         f"| {label} | {score:.3f} |"
@@ -249,6 +261,13 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         '',
         r.description,
         '',
+        '## Description Detail',
+        '',
+        f"- Salient: {', '.join(r.description_details.salient_attributes) if r.description_details else '—'}",
+        f"- Uncertain: {', '.join(r.description_details.uncertain_attributes) if r.description_details else '—'}",
+        f"- Negative claims: {', '.join(r.description_details.negative_claims) if r.description_details else '—'}",
+        f"- Keyword candidates: {', '.join(r.description_details.keyword_candidates) if r.description_details else '—'}",
+        '',
         '## Sound Events',
         '',
         event_list if event_list else '_No distinct events detected._',
@@ -262,6 +281,31 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         '| Label | Score |',
         '|---|---|',
         top_labels_rows,
+        '',
+        '## Descriptive Prompt Matches',
+        '',
+        '| Prompt | Taxonomy | Score |',
+        '|---|---|---|',
+        prompt_rows or '| _No prompt matches_ | — | — |',
+        '',
+        '## Evidence Timeline',
+        '',
+        evidence_event_list if evidence_event_list else '_No evidence events detected._',
+        '',
+        '## Mapping Diagnostics',
+        '',
+        f"- Conflict flags: {', '.join(r.mapping_diagnostics.conflict_flags) if r.mapping_diagnostics else '—'}",
+        f"- Mapper notes: {r.mapping_diagnostics.mapper_notes if r.mapping_diagnostics else '—'}",
+        alternative_rows or '- Alternatives: —',
+        '',
+        '## LLM Provenance',
+        '',
+        f"- Description: `{r.llm_provenance.description_backend}/{r.llm_provenance.description_model}` "
+        f"(attempts={r.llm_provenance.description_attempts}, repaired={r.llm_provenance.description_repaired})"
+        if r.llm_provenance else '- Description: —',
+        f"- Metadata: `{r.llm_provenance.metadata_backend}/{r.llm_provenance.metadata_model}` "
+        f"(attempts={r.llm_provenance.metadata_attempts}, repaired={r.llm_provenance.metadata_repaired})"
+        if r.llm_provenance else '- Metadata: —',
         '',
         '## Acoustic Summary',
         '',

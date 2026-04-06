@@ -33,7 +33,6 @@ Usage
 
 from __future__ import annotations
 
-import os
 import sys
 import json
 import logging
@@ -43,6 +42,7 @@ import click
 from rich.table import Table
 from rich.console import Console
 
+from timbre.llm.client import complete_json
 from timbre.output_paths import resolve_output_paths
 from timbre.config_loader import load_config
 
@@ -62,11 +62,12 @@ You are an expert audio metadata reviewer specialising in the Universal Category
 
 Your job is to review a single audio analysis record and check it for:
 1. Keyword relevance  — do the keywords accurately reflect the description and sound events?
-2. Keyword redundancy — are any keywords duplicates or near-duplicates? (e.g. "impact" and "metallic impact")
-3. Category / subcategory fit — does the UCS category and subcategory match the description?
+2. Keyword redundancy — are any keywords duplicates or near-duplicates?
+3. Category / subcategory fit — does the UCS category and subcategory match the evidence bundle?
 4. fx_name accuracy — does the short title (~25 chars) correctly summarise the sound?
-5. sound_events consistency — do the temporal events match what the description says?
-6. Confidence plausibility — is the confidence score reasonable given the description quality?
+5. sound_events consistency — do the temporal events match what the evidence and description say?
+6. Confidence plausibility — is the confidence score reasonable given the evidence quality?
+7. Mapping diagnostics — do the conflict flags and alternatives indicate unresolved ambiguity?
 
 UCS reference (top-level categories):
     AIR, AIRCRAFT, ALARMS, AMBIENCE, ANIMALS, ARCHIVED, BEEPS, BELLS, BIRDS,
@@ -101,6 +102,7 @@ def build_user_message(record: dict) -> str:
     relevant = {k: record.get(k) for k in [
         'file_name', 'category', 'subcategory', 'cat_id', 'category_full',
         'fx_name', 'description', 'keywords', 'sound_events', 'confidence',
+        'evidence', 'description_details', 'mapping_diagnostics', 'llm_provenance',
     ]}
     return f"Please review this audio analysis record:\n\n```json\n{json.dumps(relevant, indent=2)}\n```"
 
@@ -111,70 +113,41 @@ def build_user_message(record: dict) -> str:
 
 def query_ollama(record: dict, model: str = 'llama3.1:8b', temp: float = TEMP) -> dict:
     """Send a record to Ollama and return the parsed validation result."""
-    try:
-        import ollama
-    except ImportError:
-        console.print('[red]ollama package not installed. Run: pip install ollama[/red]')
-        sys.exit(1)
-
-    response = ollama.chat(
+    payload, _ = complete_json(
+        backend='ollama',
         model=model,
-        messages=[
-            {'role': 'system', 'content': SYSTEM_PROMPT},
-            {'role': 'user', 'content': build_user_message(record)},
-        ],
-        options={'temperature': temp},  # low temp for consistent structured output
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=build_user_message(record),
+        temperature=temp,
+        retries=1,
     )
-    return _parse_llm_response(response['message']['content'])
+    return payload
 
 
 def query_openai(record: dict, model: str = 'gpt-4o', temp: float = TEMP) -> dict:
     """Send a record to OpenAI and return the parsed validation result."""
-    try:
-        from openai import OpenAI
-    except ImportError:
-        console.print('[red]openai package not installed. Run: pip install openai[/red]')
-        sys.exit(1)
-
-    api_key = os.environ.get('OPENAI_API_KEY')
-    if not api_key:
-        console.print('[red]OPENAI_API_KEY environment variable not set.[/red]')
-        sys.exit(1)
-
-    client = OpenAI(api_key=api_key)
-    response = client.chat.completions.create(
+    payload, _ = complete_json(
+        backend='openai',
         model=model,
-        messages=[
-            {'role': 'system', 'content': SYSTEM_PROMPT},
-            {'role': 'user', 'content': build_user_message(record)},
-        ],
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=build_user_message(record),
         temperature=temp,
-        response_format={'type': 'json_object'},  # enforces JSON output
+        retries=1,
     )
-    return _parse_llm_response(response.choices[0].message.content)
+    return payload
 
 
 def query_anthropic(record: dict, model: str = 'claude-sonnet-4-6', temp: float = TEMP) -> dict:
     """Send a record to Anthropic Claude and return the parsed validation result."""
-    try:
-        import anthropic
-    except ImportError:
-        console.print('[red]anthropic package not installed. Run: pip install anthropic[/red]')
-        sys.exit(1)
-
-    api_key = os.environ.get('ANTHROPIC_API_KEY')
-    if not api_key:
-        console.print('[red]ANTHROPIC_API_KEY environment variable not set.[/red]')
-        sys.exit(1)
-
-    client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
+    payload, _ = complete_json(
+        backend='anthropic',
         model=model,
-        max_tokens=1024,
-        system=SYSTEM_PROMPT,
-        messages=[{'role': 'user', 'content': build_user_message(record)}],
+        system_prompt=SYSTEM_PROMPT,
+        user_prompt=build_user_message(record),
+        temperature=temp,
+        retries=1,
     )
-    return _parse_llm_response(response.content[0].text)
+    return payload
 
 
 def _parse_llm_response(raw: str) -> dict:
@@ -269,7 +242,7 @@ def run_validation(
     """Run the validation workflow."""
     cfg = load_config(config_path=config, profile_name=profile)
     default_models = {
-        'ollama': 'qwen3.5',
+        'ollama': 'qwen3.5-validator',
         'openai': 'gpt-4o',
         'anthropic': 'claude-sonnet-4-6',
     }

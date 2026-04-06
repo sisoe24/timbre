@@ -86,6 +86,19 @@ base:
     format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
     log_file: null
 
+  # -------------------------------------------------------------------------
+  # LLM generation and mapping settings
+  # -------------------------------------------------------------------------
+  llm:
+    prompt_bank_version: "v1"
+    description_backend: "openai"
+    description_model: "gpt-4o-mini"
+    description_temperature: 0.1
+    metadata_backend: "openai"
+    metadata_model: "gpt-4o-mini"
+    metadata_temperature: 0.1
+    retry_count: 1
+
 profiles:
   # Default baseline: good general balance between speed and detail.
   balanced:

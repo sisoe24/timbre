@@ -50,7 +50,7 @@ NOISY_LOGGERS = [
     'urllib3',
 ]
 
-CONFIG_SECTION_KEYS = ('model', 'audio', 'analysis', 'output', 'logging', 'ucs')
+CONFIG_SECTION_KEYS = ('model', 'audio', 'analysis', 'output', 'logging', 'ucs', 'llm')
 PROFILE_METADATA_KEYS = ('label', 'description')
 PROFILE_FINGERPRINT_KEYS = (
     'model_id',
@@ -64,6 +64,11 @@ PROFILE_FINGERPRINT_KEYS = (
     'min_confidence',
     'top_k_categories',
     'vocab_sha256',
+    'prompt_bank_version',
+    'description_backend',
+    'description_model',
+    'metadata_backend',
+    'metadata_model',
 )
 
 
@@ -276,9 +281,13 @@ def _compute_profile_fingerprint(runtime: dict) -> str:
 def refresh_runtime_metadata(runtime: dict) -> dict:
     """Refresh derived cache and profile metadata after runtime overrides."""
     cache_fingerprint = _sha256_text(
-        f"{runtime.get('model_id')}:{runtime.get('vocab_sha256')}"
+        f"{runtime.get('model_id')}:{runtime.get('vocab_sha256')}:"
+        f"{runtime.get('prompt_bank_version')}"
     )[:12]
     runtime['cache_fingerprint'] = cache_fingerprint
+    runtime['prompt_bank_fingerprint'] = _sha256_text(
+        f"{runtime.get('vocab_sha256')}:{runtime.get('prompt_bank_version')}"
+    )[:12]
 
     base_cache_path = runtime.get('label_cache_base_path')
     if base_cache_path:
@@ -389,12 +398,19 @@ def load_config(
     output_cfg = cfg.get('output', {})
     log_cfg = cfg.get('logging', {})
     ucs_cfg = cfg.get('ucs', {})
+    llm_cfg = cfg.get('llm', {})
 
     model_id = model_cfg.get('model_id', 'laion/larger_clap_general')
     resolved_config_path = config_path.resolve()
     resolved_vocab_path = vocab_path.resolve()
     vocab_sha256 = _sha256_file(resolved_vocab_path)
-    cache_fingerprint = _sha256_text(f'{model_id}:{vocab_sha256}')[:12]
+    prompt_bank_version = llm_cfg.get('prompt_bank_version', 'v1')
+    cache_fingerprint = _sha256_text(
+        f'{model_id}:{vocab_sha256}:{prompt_bank_version}'
+    )[:12]
+    prompt_bank_fingerprint = _sha256_text(
+        f'{vocab_sha256}:{prompt_bank_version}'
+    )[:12]
 
     raw_cache_path = model_cfg.get('label_cache_path')
     if raw_cache_path:
@@ -413,6 +429,8 @@ def load_config(
         'label_cache_path': label_cache_path,
         'label_cache_base_path': label_cache_base_path,
         'cache_fingerprint': cache_fingerprint,
+        'prompt_bank_version': prompt_bank_version,
+        'prompt_bank_fingerprint': prompt_bank_fingerprint,
         'profile_name': resolved_profile_name,
         'profile_source': profile_source,
         'available_profiles': available_profiles,
@@ -441,10 +459,30 @@ def load_config(
         'label_to_subcategory': label_to_subcategory,
         'label_to_cat_id': label_to_cat_id,
         'label_to_category_full': label_to_category_full,
+        'taxonomy': {
+            category: {
+                subcategory: {
+                    'cat_id': subcat_data.get('cat_id', ''),
+                    'category_full': f'{category}-{subcategory}',
+                }
+                for subcategory, subcat_data in subcategories.items()
+                if isinstance(subcat_data, dict)
+            }
+            for category, subcategories in vocab.get('categories', {}).items()
+            if isinstance(subcategories, dict)
+        },
         # UCS identity
         'ucs_creator_id': ucs_cfg.get('creator_id', 'UNKNOWN'),
         'ucs_source_id': ucs_cfg.get('source_id', 'NONE'),
         'ucs_user_data': ucs_cfg.get('user_data', ''),
+        # LLM
+        'description_backend': llm_cfg.get('description_backend', 'openai'),
+        'description_model': llm_cfg.get('description_model', 'gpt-4o-mini'),
+        'description_temperature': llm_cfg.get('description_temperature', 0.1),
+        'metadata_backend': llm_cfg.get('metadata_backend', 'openai'),
+        'metadata_model': llm_cfg.get('metadata_model', 'gpt-4o-mini'),
+        'metadata_temperature': llm_cfg.get('metadata_temperature', 0.1),
+        'llm_retry_count': llm_cfg.get('retry_count', 1),
         # Output
         'output': output_cfg,
         # Logging
@@ -467,6 +505,7 @@ def load_config(
         runtime['profile_label'] = _default_profile_label(runtime['profile_name'])
         runtime['profile_description'] = ''
     refresh_runtime_metadata(runtime)
+    runtime['descriptive_prompt_count'] = len(candidate_labels) * 15
 
     logger.debug(
         'Config loaded: profile=%s labels=%d categories=%d.',

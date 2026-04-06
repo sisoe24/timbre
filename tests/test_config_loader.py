@@ -141,6 +141,22 @@ def test_profile_fingerprint_is_stable_and_updates_on_override(
     assert cfg_default['profile_fingerprint'] != cfg_explicit['profile_fingerprint']
 
 
+def test_prompt_bank_version_updates_cache_fingerprint(
+    temp_config: tuple[Path, Path],
+) -> None:
+    config_path, vocab_path = temp_config
+
+    cfg = load_config(config_path=config_path, vocab_path=vocab_path)
+    original_cache = cfg['cache_fingerprint']
+    original_prompt = cfg['prompt_bank_fingerprint']
+
+    cfg['prompt_bank_version'] = 'v2'
+    refresh_runtime_metadata(cfg)
+
+    assert cfg['cache_fingerprint'] != original_cache
+    assert cfg['prompt_bank_fingerprint'] != original_prompt
+
+
 def test_output_paths_are_scoped_by_profile(temp_config: tuple[Path, Path]) -> None:
     config_path, vocab_path = temp_config
     cfg = load_config(

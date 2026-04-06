@@ -35,6 +35,7 @@ def build_cache_for_config(
         'model_id': config.get('model_id'),
         'vocab_sha256': config.get('vocab_sha256'),
         'cache_fingerprint': config.get('cache_fingerprint'),
+        'prompt_bank_version': config.get('prompt_bank_version'),
     }
     if not force and cache.is_valid(
         expected_label_count=len(candidate_labels),
