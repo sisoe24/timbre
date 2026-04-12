@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 import datetime
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from pydantic import Field, BaseModel, field_validator
 
@@ -95,64 +95,24 @@ class EvidenceBundle(BaseModel):
     dominant_frequency_band: str = ''
 
 
-class DescriptionDetails(BaseModel):
-    """Normalized semantic description derived from raw audio evidence."""
+class AnalysisResult(BaseModel):
+    """Unified output from a single LLM analysis call (description + UCS fields)."""
 
-    primary_action: str = ''
-    secondary_actions: List[str] = Field(default_factory=list)
-    primary_source: str = ''
-    secondary_sources: List[str] = Field(default_factory=list)
-    texture_traits: List[str] = Field(default_factory=list)
-    temporal_traits: List[str] = Field(default_factory=list)
-    environment_traits: List[str] = Field(default_factory=list)
+    description: str = ''
+    category: str = ''
+    subcategory: str = ''
+    cat_id: str = ''
+    category_full: str = ''
+    fx_name: str = ''
+    keywords: List[str] = Field(default_factory=list)
+    sound_events: List[str] = Field(default_factory=list)
     uncertainty_notes: List[str] = Field(default_factory=list)
-    negative_claims: List[str] = Field(default_factory=list)
-    keyword_candidates: List[str] = Field(default_factory=list)
-    normalized_events: List[str] = Field(default_factory=list)
-
-    @field_validator(
-        'secondary_actions',
-        'secondary_sources',
-        'texture_traits',
-        'temporal_traits',
-        'environment_traits',
-        'uncertainty_notes',
-        'negative_claims',
-        'keyword_candidates',
-        'normalized_events',
-        mode='before',
-    )
-    @classmethod
-    def coerce_listish_fields(cls, value: Any) -> List[str]:
-        if value is None:
-            return []
-        if isinstance(value, list):
-            return [
-                str(item).strip()
-                for item in value
-                if str(item).strip()
-            ]
-        if isinstance(value, str):
-            text = value.strip()
-            return [text] if text else []
-        if isinstance(value, dict):
-            items: list[str] = []
-            for key, item in value.items():
-                key_text = str(key).strip()
-                item_text = str(item).strip()
-                if key_text and item_text:
-                    items.append(f'{key_text}={item_text}')
-                elif key_text:
-                    items.append(key_text)
-                elif item_text:
-                    items.append(item_text)
-            return items
-        text = str(value).strip()
-        return [text] if text else []
+    conflict_flags: List[str] = Field(default_factory=list)
+    mapper_notes: str = ''
 
 
 class RankedAlternative(BaseModel):
-    """Alternative taxonomy interpretation returned by the mapper."""
+    """Alternative taxonomy interpretation returned by the analyzer."""
 
     category: str
     subcategory: str
@@ -162,7 +122,7 @@ class RankedAlternative(BaseModel):
 
 
 class MappingDiagnostics(BaseModel):
-    """Diagnostics from the metadata-mapping stage."""
+    """Diagnostics from the analysis/mapping stage."""
 
     ranked_alternatives: List[RankedAlternative] = Field(default_factory=list)
     conflict_flags: List[str] = Field(default_factory=list)
@@ -172,16 +132,12 @@ class MappingDiagnostics(BaseModel):
 
 
 class LLMProvenance(BaseModel):
-    """Provider/model details for the LLM-backed generation stages."""
+    """Provider/model details for the LLM analysis stage."""
 
-    description_backend: str
-    description_model: str
-    description_attempts: int = Field(..., ge=1)
-    description_repaired: bool = False
-    metadata_backend: str
-    metadata_model: str
-    metadata_attempts: int = Field(..., ge=1)
-    metadata_repaired: bool = False
+    backend: str
+    model: str
+    attempts: int = Field(..., ge=1)
+    repaired: bool = False
 
 
 class ValidationSummary(BaseModel):
@@ -259,7 +215,7 @@ class AudioAnalysisRecord(BaseModel):
     # ---- Classification detail (internal) --------------------------------
     top_labels: Dict[str, float] = Field(default_factory=dict)
     evidence: EvidenceBundle | None = None
-    structured_description: DescriptionDetails | None = None
+    analysis_result: AnalysisResult | None = None
     mapping_diagnostics: MappingDiagnostics | None = None
     llm_provenance: LLMProvenance | None = None
     validation_summary: ValidationSummary | None = None

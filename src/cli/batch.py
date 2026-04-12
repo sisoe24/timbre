@@ -43,24 +43,11 @@ console = Console()
     help='Recurse into sub-directories (default: true)',
 )
 @click.option(
-    '--catalog',
-    is_flag=True,
-    default=True,
-    help='Generate a Markdown catalog from all results (default: true)',
-)
-@click.option(
     '--csv',
     'save_csv',
     is_flag=True,
-    default=True,
-    help='Generate a CSV catalog (default: true)',
-)
-@click.option(
-    '--markdown',
-    'save_per_file_markdown',
-    is_flag=True,
     default=False,
-    help='Save per-file Markdown review reports',
+    help='Generate a CSV catalog',
 )
 @click.option(
     '--full',
@@ -95,9 +82,7 @@ def main(
     vocab: str | None,
     profile: str | None,
     recursive: bool,
-    catalog: bool,
     save_csv: bool,
-    save_per_file_markdown: bool,
     full: bool,
     no_windowed: bool,
     skip_errors: bool,
@@ -116,12 +101,9 @@ def main(
     from timbre.output_paths import resolve_output_paths
     from timbre.config_loader import (load_config, setup_logging,
                                       refresh_runtime_metadata)
-    from timbre.output.serializer import save_json
-    from timbre.output.serializer import save_markdown as save_md
-    from timbre.output.serializer import save_json_batch
+    from timbre.output.serializer import save_json, save_json_batch
     from timbre.ingestion.audio_loader import discover_audio_files
-    from timbre.output.catalog_builder import (build_catalog_csv,
-                                               build_catalog_markdown)
+    from timbre.output.catalog_builder import build_catalog_csv
 
     from .validate import validate_record, maybe_write_validation_report
 
@@ -212,8 +194,6 @@ def main(
 
                 records.append(record)
                 save_json(record, output_paths['json_dir'], full=full)
-                if save_per_file_markdown:
-                    save_md(record, output_paths['markdown_dir'])
             except Exception as exc:
                 failed += 1
                 if not skip_errors:
@@ -241,10 +221,6 @@ def main(
 
     save_json_batch(records, output_paths['batch_json'], full=full)
     console.print(f"[dim]Batch JSON → {output_paths['batch_json']}[/dim]")
-
-    if catalog:
-        build_catalog_markdown(records, output_paths['catalog_markdown'])
-        console.print(f"[dim]Catalog   → {output_paths['catalog_markdown']}[/dim]")
 
     if save_csv:
         build_catalog_csv(records, output_paths['catalog_csv'])

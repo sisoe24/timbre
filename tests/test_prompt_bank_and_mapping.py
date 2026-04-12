@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from timbre.output.schema import (EvidenceEvent, EvidenceBundle,
-                                  PromptEvidence, DescriptionDetails)
+from timbre.output.schema import EvidenceEvent, EvidenceBundle, PromptEvidence
+from timbre.analysis.analyzer import analyze
 from timbre.analysis.prompt_bank import build_descriptive_prompt_bank
-from timbre.analysis.metadata_mapper import map_metadata
 
 
 def _taxonomy() -> dict:
@@ -63,17 +62,16 @@ def test_prompt_bank_generation_is_deterministic() -> None:
     assert 'reverberant metal impact' in [entry.prompt for entry in first]
 
 
-def test_metadata_mapper_repairs_out_of_taxonomy_response(monkeypatch) -> None:
+def test_analyzer_repairs_out_of_taxonomy_response(monkeypatch) -> None:
     calls: list[tuple[str, str]] = []
 
     def fake_complete_json(**kwargs):
         calls.append((kwargs['system_prompt'], kwargs['user_prompt']))
         if len(calls) == 1:
             return ({
-                'category': 'OBJECTS',
+                'description': 'A metallic impact sound.',
+                'category': 'OBJECTS',       # invalid — not in taxonomy
                 'subcategory': 'METAL',
-                'cat_id': 'OBJMtl',
-                'category_full': 'OBJECTS-METAL',
                 'fx_name': 'Wrong',
                 'keywords': ['wrong'],
                 'sound_events': ['wrong'],
@@ -82,10 +80,9 @@ def test_metadata_mapper_repairs_out_of_taxonomy_response(monkeypatch) -> None:
                 'mapper_notes': 'needs repair',
             }, {'backend': 'openai', 'model': 'gpt', 'attempts': 1, 'repaired': False})
         return ({
+            'description': 'A short sharp metal impact.',
             'category': 'IMPACTS',
             'subcategory': 'METAL',
-            'cat_id': 'bad',
-            'category_full': 'bad',
             'fx_name': 'Metal Hit',
             'keywords': ['metal', 'impact'],
             'sound_events': ['metal impact'],
@@ -94,127 +91,87 @@ def test_metadata_mapper_repairs_out_of_taxonomy_response(monkeypatch) -> None:
             'mapper_notes': 'repaired',
         }, {'backend': 'openai', 'model': 'gpt', 'attempts': 1, 'repaired': False})
 
-    monkeypatch.setattr('timbre.analysis.metadata_mapper.complete_json', fake_complete_json)
+    monkeypatch.setattr('timbre.analysis.analyzer.complete_json', fake_complete_json)
 
-    mapped, diagnostics, provenance = map_metadata(
+    result, diagnostics, provenance = analyze(
         _evidence(),
-        DescriptionDetails(
-            primary_action='impact',
-            secondary_actions=[],
-            primary_source='metal object',
-            secondary_sources=[],
-            texture_traits=['sharp', 'metallic'],
-            temporal_traits=['single'],
-            environment_traits=[],
-            uncertainty_notes=[],
-            negative_claims=[],
-            keyword_candidates=['metal', 'impact'],
-            normalized_events=['metal impact'],
-        ),
-        taxonomy=_taxonomy(),
+        _taxonomy(),
         backend='openai',
         model='gpt',
         temperature=0.1,
         retries=1,
     )
 
-    assert mapped['category'] == 'IMPACTS'
-    assert mapped['cat_id'] == 'IMPMtl'
+    assert result.category == 'IMPACTS'
+    assert result.cat_id == 'IMPMtl'
     assert diagnostics.repair_attempted is True
     assert provenance['attempts'] == 2
 
 
-def test_metadata_mapper_prompt_excludes_raw_clap_labels_for_cane_mangia(monkeypatch) -> None:
+def test_analyzer_prompt_includes_evidence(monkeypatch) -> None:
     prompts: list[str] = []
 
     def fake_complete_json(**kwargs):
         prompts.append(kwargs['user_prompt'])
         return ({
-            'category': 'FOOD & DRINK',
-            'subcategory': 'EATING',
-            'cat_id': 'ignored',
-            'category_full': 'ignored',
-            'fx_name': 'Eating Sounds',
-            'keywords': ['eating', 'chewing'],
-            'sound_events': ['eating', 'chewing'],
+            'description': 'A sharp metallic impact.',
+            'category': 'IMPACTS',
+            'subcategory': 'METAL',
+            'fx_name': 'Metal Impact',
+            'keywords': ['metal', 'impact'],
+            'sound_events': ['metal impact'],
             'alternatives': [],
             'conflict_flags': [],
             'mapper_notes': 'clean mapping',
         }, {'backend': 'openai', 'model': 'gpt', 'attempts': 1, 'repaired': False})
 
-    monkeypatch.setattr('timbre.analysis.metadata_mapper.complete_json', fake_complete_json)
+    monkeypatch.setattr('timbre.analysis.analyzer.complete_json', fake_complete_json)
 
-    evidence = EvidenceBundle(
-        base_label_scores={'dog eating': 0.31, 'pumping': 0.28, 'footsteps': 0.22},
-        descriptive_prompt_matches=[
-            PromptEvidence(
-                prompt='repeated eating sounds',
-                base_label='dog eating',
-                category='FOOD & DRINK',
-                subcategory='EATING',
-                cat_id='FOODEat',
-                category_full='FOOD & DRINK-EATING',
-                modifiers=['repeated'],
-                score=0.41,
-            )
-        ],
-        sound_events=[
-            EvidenceEvent(
-                label='pumping',
-                category='MACHINES',
-                start_time=0.0,
-                end_time=0.6,
-                confidence=0.52,
-            )
-        ],
-        acoustic_flags=['noisy', 'sparse'],
-        dominant_frequency_band='mid',
-    )
-    description = DescriptionDetails(
-        primary_action='eating',
-        secondary_actions=['chewing'],
-        primary_source='animal mouth',
-        secondary_sources=[],
-        texture_traits=['wet', 'close'],
-        temporal_traits=['repeated'],
-        environment_traits=['indoors'],
-        uncertainty_notes=['background movement may be unrelated'],
-        negative_claims=['no clear machinery source'],
-        keyword_candidates=['eating', 'chewing', 'animal'],
-        normalized_events=['eating', 'chewing'],
-    )
-
-    mapped, _, _ = map_metadata(
-        evidence,
-        description,
-        taxonomy={
-            'FOOD & DRINK': {
-                'EATING': {'cat_id': 'FOODEat', 'category_full': 'FOOD & DRINK-EATING'}
-            }
-        },
+    result, _, _ = analyze(
+        _evidence(),
+        _taxonomy(),
         backend='openai',
         model='gpt',
         temperature=0.1,
         retries=0,
     )
 
-    assert mapped['category'] == 'FOOD & DRINK'
+    assert result.category == 'IMPACTS'
     assert prompts
-    assert 'structured_description' in prompts[0]
-    assert 'compact_cues' in prompts[0]
-    assert 'top_labels' not in prompts[0]
-    assert 'prompt_matches' not in prompts[0]
-    assert 'pumping' not in prompts[0]
+    # Evidence and taxonomy are both in the single prompt
+    assert 'top_labels' in prompts[0]
+    assert 'Taxonomy' in prompts[0]
+    assert 'Evidence' in prompts[0]
 
 
-def test_description_details_coerces_scalar_and_dict_list_fields() -> None:
-    details = DescriptionDetails.model_validate({
-        'primary_action': 'eating',
-        'temporal_traits': {'start_time': 0.0, 'end_time': 8.0},
-        'environment_traits': 'military',
-        'uncertainty_notes': 'Confidence levels vary across sound events.',
-    })
+def test_analyzer_validates_and_resolves_taxonomy(monkeypatch) -> None:
+    """LLM-returned cat_id/category_full are ignored; resolved from taxonomy."""
 
-    assert details.temporal_traits == ['start_time=0.0', 'end_time=8.0']
-    assert details.environment_traits == ['military']
-    assert details.uncertainty_notes == ['Confidence levels vary across sound events.']
+    def fake_complete_json(**kwargs):
+        return ({
+            'description': 'Metal impact.',
+            'category': 'IMPACTS',
+            'subcategory': 'METAL',
+            'cat_id': 'IGNORED',          # should be overwritten by taxonomy lookup
+            'category_full': 'IGNORED',   # same
+            'fx_name': 'Metal Hit',
+            'keywords': ['metal'],
+            'sound_events': ['metal impact'],
+            'alternatives': [],
+            'conflict_flags': [],
+            'mapper_notes': '',
+        }, {'backend': 'openai', 'model': 'gpt', 'attempts': 1, 'repaired': False})
+
+    monkeypatch.setattr('timbre.analysis.analyzer.complete_json', fake_complete_json)
+
+    result, _, _ = analyze(
+        _evidence(),
+        _taxonomy(),
+        backend='openai',
+        model='gpt',
+        temperature=0.1,
+        retries=0,
+    )
+
+    assert result.cat_id == 'IMPMtl'
+    assert result.category_full == 'IMPACTS-METAL'

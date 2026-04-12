@@ -49,13 +49,6 @@ console = Console()
     help='Save full JSON (with metadata + acoustics) instead of brief spec format',
 )
 @click.option(
-    '--markdown',
-    'save_markdown',
-    is_flag=True,
-    default=False,
-    help='Also save a per-file Markdown review report',
-)
-@click.option(
     '--no-windowed',
     is_flag=True,
     default=False,
@@ -82,7 +75,6 @@ def main(
     vocab: str | None,
     profile: str | None,
     full: bool,
-    save_markdown: bool,
     no_windowed: bool,
     quiet: bool,
     debug: bool,
@@ -100,7 +92,6 @@ def main(
     from timbre.config_loader import (load_config, setup_logging,
                                       refresh_runtime_metadata)
     from timbre.output.serializer import save_json
-    from timbre.output.serializer import save_markdown as save_md
     from timbre.ingestion.audio_loader import load_audio
 
     from .validate import validate_record, maybe_write_validation_report
@@ -196,8 +187,6 @@ def main(
         record = record.model_copy(update={'validation_summary': validation_summary})
 
     json_path = save_json(record, out_dir, full=full)
-    if save_markdown or cfg['output'].get('save_per_file_markdown', False):
-        save_md(record, output_paths['markdown_dir'])
 
     if not quiet:
         _print_record(record)

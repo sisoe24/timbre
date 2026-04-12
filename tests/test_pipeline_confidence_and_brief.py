@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from timbre.pipeline import AudioAnalysisPipeline
 from timbre.output.schema import (AudioMetadata, EvidenceEvent, LLMProvenance,
-                                  EvidenceBundle, PromptEvidence,
-                                  AcousticSummary, RankedAlternative,
-                                  ValidationSummary, AnalysisProvenance,
-                                  DescriptionDetails, MappingDiagnostics,
+                                  AnalysisResult, EvidenceBundle,
+                                  PromptEvidence, AcousticSummary,
+                                  RankedAlternative, ValidationSummary,
+                                  AnalysisProvenance, MappingDiagnostics,
                                   AudioAnalysisRecord)
 
 
@@ -52,19 +52,21 @@ def test_pipeline_confidence_penalizes_conflicts() -> None:
         acoustic_flags=['percussive'],
         dominant_frequency_band='mid',
     )
-    mapped = {
-        'category': 'IMPACTS',
-        'subcategory': 'METAL',
-    }
+    result = AnalysisResult(
+        category='IMPACTS',
+        subcategory='METAL',
+        cat_id='IMPMtl',
+        category_full='IMPACTS-METAL',
+    )
 
     clean = pipeline._compute_classification_confidence(
         evidence,
-        mapped,
+        result,
         MappingDiagnostics(ranked_alternatives=[], conflict_flags=[]),
     )
     conflicted = pipeline._compute_classification_confidence(
         evidence,
-        mapped,
+        result,
         MappingDiagnostics(
             ranked_alternatives=[
                 RankedAlternative(
@@ -110,29 +112,22 @@ def test_brief_output_stays_catalog_focused() -> None:
             acoustic_flags=[],
             dominant_frequency_band='mid',
         ),
-        structured_description=DescriptionDetails(
-            primary_action='impact',
-            secondary_actions=[],
-            primary_source='metal object',
-            secondary_sources=[],
-            texture_traits=['sharp'],
-            temporal_traits=['single'],
-            environment_traits=[],
-            uncertainty_notes=[],
-            negative_claims=[],
-            keyword_candidates=['metal', 'impact'],
-            normalized_events=['metal impact'],
+        analysis_result=AnalysisResult(
+            description='A short sharp metal hit.',
+            category='IMPACTS',
+            subcategory='METAL',
+            cat_id='IMPMtl',
+            category_full='IMPACTS-METAL',
+            fx_name='Metal Hit',
+            keywords=['metal', 'impact'],
+            sound_events=['metal impact'],
         ),
         mapping_diagnostics=MappingDiagnostics(),
         llm_provenance=LLMProvenance(
-            description_backend='openai',
-            description_model='gpt-4o-mini',
-            description_attempts=1,
-            description_repaired=False,
-            metadata_backend='openai',
-            metadata_model='gpt-4o-mini',
-            metadata_attempts=1,
-            metadata_repaired=False,
+            backend='openai',
+            model='gpt-4o-mini',
+            attempts=1,
+            repaired=False,
         ),
         validation_summary=ValidationSummary(
             backend='openai',
@@ -176,7 +171,7 @@ def test_brief_output_stays_catalog_focused() -> None:
 
     assert 'evidence' not in brief
     assert 'mapping_diagnostics' not in brief
-    assert 'structured_description' not in brief
+    assert 'analysis_result' not in brief
     assert brief['category'] == 'IMPACTS'
     assert brief['classification_confidence'] == 0.9
     assert brief['review_required'] is False

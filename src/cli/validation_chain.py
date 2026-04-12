@@ -31,9 +31,9 @@ def add_validation_chain_options(func):
         ),
         click.option(
             '--validate-mode',
-            type=click.Choice(['audit', 'autocorrect']),
+            type=click.Choice(['audit']),
             default='audit',
-            show_default=True,
+            hidden=True,
             help='Validation mode for inline validation',
         ),
         click.option(

@@ -134,22 +134,6 @@ def load_records(input_path: Path) -> list[tuple[Path, dict]]:
     return records
 
 
-def apply_corrections(original: dict, validation: dict) -> dict:
-    """Merge validator suggestions into a corrected record copy."""
-    corrected = original.copy()
-    if validation.get('suggested_keywords'):
-        corrected['keywords'] = validation['suggested_keywords']
-    if validation.get('suggested_category'):
-        corrected['category'] = validation['suggested_category']
-    if validation.get('suggested_subcategory'):
-        corrected['subcategory'] = validation['suggested_subcategory']
-    if validation.get('suggested_fx_name'):
-        corrected['fx_name'] = validation['suggested_fx_name']
-    if validation.get('suggested_filename'):
-        corrected['suggested_filename'] = validation['suggested_filename']
-    return corrected
-
-
 def print_summary(results: list[dict]) -> None:
     """Print a rich validation summary table."""
     table = Table(title='CLAP Validation Summary', show_lines=True)
@@ -276,13 +260,12 @@ def run_validation(
     )
 
     all_results: list[dict] = []
-    corrected_records: list[tuple[Path, dict]] = []
 
     for path, record in records:
         file_name = record.get('file_name', path.name)
         console.print(f"  Validating [cyan]{file_name}[/cyan]...", end=' ')
         try:
-            validation, record_dict = validate_record(
+            validation, _ = validate_record(
                 record,
                 backend=backend,
                 model=selected_model,
@@ -293,9 +276,6 @@ def run_validation(
             score = validation.get('consistency_score', 0.0)
             issues = len(validation.get('issues', []))
             console.print(f"score={score:.2f}  issues={issues}")
-
-            if mode == 'autocorrect':
-                corrected_records.append((path, apply_corrections(record_dict, validation)))
         except Exception as exc:
             console.print(f"[red]ERROR: {exc}[/red]")
             all_results.append({
@@ -317,16 +297,6 @@ def run_validation(
         )
     maybe_write_validation_report(all_results, report=report_path)
     console.print(f"\n[green]Report saved:[/green] {report_path}")
-
-    if mode == 'autocorrect' and corrected_records:
-        corrected_dir = input_path.parent / 'corrected'
-        corrected_dir.mkdir(exist_ok=True)
-        for orig_path, corrected in corrected_records:
-            out_path = corrected_dir / orig_path.name
-            with open(out_path, 'w', encoding='utf-8') as f:
-                json.dump(corrected, f, indent=2)
-        console.print(f"[green]Corrected records saved to:[/green] {corrected_dir}/")
-
     console.print()
 
 
@@ -368,9 +338,10 @@ def run_validation(
 )
 @click.option(
     '--mode',
-    type=click.Choice(['audit', 'autocorrect']),
+    type=click.Choice(['audit']),
     default='audit',
     show_default=True,
+    hidden=True,
     help='Validation mode',
 )
 @click.option(

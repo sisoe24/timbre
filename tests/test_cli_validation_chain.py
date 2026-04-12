@@ -210,7 +210,7 @@ def test_analyze_validate_uses_in_memory_record_and_optional_report(
             '--validate-model',
             'gpt-5.4-mini',
             '--validate-mode',
-            'autocorrect',
+            'audit',
             '--validate-temp',
             '0.3',
             '--validate-report',
@@ -224,7 +224,7 @@ def test_analyze_validate_uses_in_memory_record_and_optional_report(
     assert validation_calls[0]['record'].file_name == 'impact.wav'
     assert validation_calls[0]['backend'] == 'openai'
     assert validation_calls[0]['model'] == 'gpt-5.4-mini'
-    assert validation_calls[0]['mode'] == 'autocorrect'
+    assert validation_calls[0]['mode'] == 'audit'
     assert validation_calls[0]['temp'] == 0.3
     assert len(report_calls) == 1
     assert report_calls[0]['report'] == report_path

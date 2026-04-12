@@ -71,12 +71,11 @@ def detect_events(
     waveform: np.ndarray,
     sr: int,
     tagger: CLAPTagger,
-    candidate_labels: List[str],
     label_to_category: Dict[str, str],
     window_seconds: float = 2.0,
     hop_seconds: float = 0.5,
     min_confidence: float = MIN_CONFIDENCE_THRESHOLD,
-    cache=None,  # Optional[LabelEmbeddingCache]
+    cache=None,  # LabelEmbeddingCache
     top_k_categories: int = 5,
 ) -> List[SoundEvent]:
     """
@@ -87,14 +86,12 @@ def detect_events(
     waveform         : mono float32 waveform at 48 kHz
     sr               : sample rate (must be 48000)
     tagger           : pre-loaded CLAPTagger instance
-    candidate_labels : list of text labels (used only when cache=None)
-    label_to_category: mapping from label → category string
+    label_to_category: mapping from label → category string (unused; resolved from cache)
     window_seconds   : CLAP window size
     hop_seconds      : window hop size
     min_confidence   : discard detections below this confidence
-    cache            : LabelEmbeddingCache — when provided, text embeddings
-                       are loaded from cache instead of re-encoded each window
-                       (significantly faster for large vocabularies)
+    cache            : LabelEmbeddingCache — required; text embeddings are loaded
+                       from cache instead of re-encoded each window
 
     Returns
     -------
@@ -103,28 +100,22 @@ def detect_events(
     if len(waveform) == 0:
         return []
 
-    if cache is not None:
-        # Fast path: embed audio once per window, score against cached text
-        window_results = _classify_windowed_cached(
-            waveform=waveform,
-            sr=sr,
-            tagger=tagger,
-            cache=cache,
-            window_seconds=window_seconds,
-            hop_seconds=hop_seconds,
-            top_k_categories=top_k_categories,
+    if cache is None:
+        raise ValueError(
+            'Cache required for windowed event detection. '
+            'Ensure label_cache_path is configured and cache is loaded.'
         )
-        # Use the cache's label_to_category for lookups
-        label_to_category = cache.label_to_category
-    else:
-        # Legacy path: re-encode all labels on every window
-        window_results = tagger.classify_windowed(
-            waveform=waveform,
-            sr=sr,
-            candidate_labels=candidate_labels,
-            window_seconds=window_seconds,
-            hop_seconds=hop_seconds,
-        )
+
+    window_results = _classify_windowed_cached(
+        waveform=waveform,
+        sr=sr,
+        tagger=tagger,
+        cache=cache,
+        window_seconds=window_seconds,
+        hop_seconds=hop_seconds,
+        top_k_categories=top_k_categories,
+    )
+    label_to_category = cache.label_to_category
 
     # Convert each window to a single best-match event
     raw_events: List[Tuple[float, float, str, str, float]] = []
