@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import re
 import datetime
-from typing import Dict, List
+from typing import Any, Dict, List
 
 from pydantic import Field, BaseModel, field_validator
 
@@ -96,13 +96,59 @@ class EvidenceBundle(BaseModel):
 
 
 class DescriptionDetails(BaseModel):
-    """Evidence-constrained description output."""
+    """Normalized semantic description derived from raw audio evidence."""
 
-    description: str
-    salient_attributes: List[str] = Field(default_factory=list)
-    uncertain_attributes: List[str] = Field(default_factory=list)
+    primary_action: str = ''
+    secondary_actions: List[str] = Field(default_factory=list)
+    primary_source: str = ''
+    secondary_sources: List[str] = Field(default_factory=list)
+    texture_traits: List[str] = Field(default_factory=list)
+    temporal_traits: List[str] = Field(default_factory=list)
+    environment_traits: List[str] = Field(default_factory=list)
+    uncertainty_notes: List[str] = Field(default_factory=list)
     negative_claims: List[str] = Field(default_factory=list)
     keyword_candidates: List[str] = Field(default_factory=list)
+    normalized_events: List[str] = Field(default_factory=list)
+
+    @field_validator(
+        'secondary_actions',
+        'secondary_sources',
+        'texture_traits',
+        'temporal_traits',
+        'environment_traits',
+        'uncertainty_notes',
+        'negative_claims',
+        'keyword_candidates',
+        'normalized_events',
+        mode='before',
+    )
+    @classmethod
+    def coerce_listish_fields(cls, value: Any) -> List[str]:
+        if value is None:
+            return []
+        if isinstance(value, list):
+            return [
+                str(item).strip()
+                for item in value
+                if str(item).strip()
+            ]
+        if isinstance(value, str):
+            text = value.strip()
+            return [text] if text else []
+        if isinstance(value, dict):
+            items: list[str] = []
+            for key, item in value.items():
+                key_text = str(key).strip()
+                item_text = str(item).strip()
+                if key_text and item_text:
+                    items.append(f'{key_text}={item_text}')
+                elif key_text:
+                    items.append(key_text)
+                elif item_text:
+                    items.append(item_text)
+            return items
+        text = str(value).strip()
+        return [text] if text else []
 
 
 class RankedAlternative(BaseModel):
@@ -197,6 +243,10 @@ class AudioAnalysisRecord(BaseModel):
     keywords: List[str] = Field(default_factory=list)   # search terms (was tags)
     sound_events: List[str] = Field(default_factory=list)
     confidence: float = Field(..., ge=0.0, le=1.0)
+    classification_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    description_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    metadata_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
+    review_required: bool = False
 
     # ---- UCS identity ---------------------------------------------------
     creator_id: str = 'UNKNOWN'
@@ -209,7 +259,7 @@ class AudioAnalysisRecord(BaseModel):
     # ---- Classification detail (internal) --------------------------------
     top_labels: Dict[str, float] = Field(default_factory=dict)
     evidence: EvidenceBundle | None = None
-    description_details: DescriptionDetails | None = None
+    structured_description: DescriptionDetails | None = None
     mapping_diagnostics: MappingDiagnostics | None = None
     llm_provenance: LLMProvenance | None = None
     validation_summary: ValidationSummary | None = None
@@ -219,7 +269,12 @@ class AudioAnalysisRecord(BaseModel):
     acoustic_summary: AcousticSummary
     analysis_provenance: AnalysisProvenance
 
-    @field_validator('confidence')
+    @field_validator(
+        'confidence',
+        'classification_confidence',
+        'description_confidence',
+        'metadata_confidence',
+    )
     @classmethod
     def round_confidence(cls, v: float) -> float:
         return round(v, 3)
@@ -240,6 +295,10 @@ class AudioAnalysisRecord(BaseModel):
             'keywords': self.keywords,
             'sound_events': self.sound_events,
             'confidence': self.confidence,
+            'classification_confidence': self.classification_confidence,
+            'description_confidence': self.description_confidence,
+            'metadata_confidence': self.metadata_confidence,
+            'review_required': self.review_required,
             'creator_id': self.creator_id,
             'source_id': self.source_id,
             'user_data': self.user_data,

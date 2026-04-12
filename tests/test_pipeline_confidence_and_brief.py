@@ -57,12 +57,12 @@ def test_pipeline_confidence_penalizes_conflicts() -> None:
         'subcategory': 'METAL',
     }
 
-    clean = pipeline._compute_confidence(
+    clean = pipeline._compute_classification_confidence(
         evidence,
         mapped,
         MappingDiagnostics(ranked_alternatives=[], conflict_flags=[]),
     )
-    conflicted = pipeline._compute_confidence(
+    conflicted = pipeline._compute_classification_confidence(
         evidence,
         mapped,
         MappingDiagnostics(
@@ -94,6 +94,10 @@ def test_brief_output_stays_catalog_focused() -> None:
         keywords=['metal', 'impact'],
         sound_events=['metal impact'],
         confidence=0.88,
+        classification_confidence=0.9,
+        description_confidence=0.8,
+        metadata_confidence=0.85,
+        review_required=False,
         creator_id='UNKNOWN',
         source_id='NONE',
         user_data='',
@@ -106,12 +110,18 @@ def test_brief_output_stays_catalog_focused() -> None:
             acoustic_flags=[],
             dominant_frequency_band='mid',
         ),
-        description_details=DescriptionDetails(
-            description='A short sharp metal hit.',
-            salient_attributes=['sharp'],
-            uncertain_attributes=[],
+        structured_description=DescriptionDetails(
+            primary_action='impact',
+            secondary_actions=[],
+            primary_source='metal object',
+            secondary_sources=[],
+            texture_traits=['sharp'],
+            temporal_traits=['single'],
+            environment_traits=[],
+            uncertainty_notes=[],
             negative_claims=[],
             keyword_candidates=['metal', 'impact'],
+            normalized_events=['metal impact'],
         ),
         mapping_diagnostics=MappingDiagnostics(),
         llm_provenance=LLMProvenance(
@@ -166,6 +176,9 @@ def test_brief_output_stays_catalog_focused() -> None:
 
     assert 'evidence' not in brief
     assert 'mapping_diagnostics' not in brief
+    assert 'structured_description' not in brief
     assert brief['category'] == 'IMPACTS'
+    assert brief['classification_confidence'] == 0.9
+    assert brief['review_required'] is False
     assert brief['validation_summary']['validated_inline'] is True
     assert brief['validation_summary']['consistency_score'] == 0.94

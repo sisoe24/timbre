@@ -1,7 +1,7 @@
 """
 metadata_mapper.py
 ------------------
-LLM-backed constrained mapping from structured evidence into UCS metadata.
+LLM-backed constrained mapping from normalized description into UCS metadata.
 """
 
 from __future__ import annotations
@@ -14,15 +14,16 @@ from ..output.schema import (EvidenceBundle, RankedAlternative,
                              DescriptionDetails, MappingDiagnostics)
 
 SYSTEM_PROMPT = """\
-You map structured audio evidence into UCS metadata.
+You map a normalized audio description into UCS metadata.
 
 Rules:
-- Use the evidence as the source of truth.
-- The natural-language description is supporting context only.
+- The structured description object is the semantic source of truth.
+- Compact cue summaries may support the decision, but do not invent details beyond them.
 - Return only valid JSON.
 - Choose one best category/subcategory pair from the provided taxonomy.
 - Keep fx_name short and catalog-friendly.
 - Keywords should be specific, deduplicated, and search-oriented.
+- sound_events must stay aligned with the provided normalized_events.
 """
 
 
@@ -36,11 +37,11 @@ def map_metadata(
     temperature: float,
     retries: int,
 ) -> tuple[dict, MappingDiagnostics, dict]:
-    """Map evidence + description into validated UCS metadata."""
+    """Map normalized description + compact cues into validated UCS metadata."""
     user_prompt = (
         'Map this clip into UCS metadata using the provided taxonomy.\n\n'
         f"Taxonomy:\n{json.dumps(taxonomy, indent=2)}\n\n"
-        f"Evidence:\n{json.dumps(_evidence_payload(evidence, description), indent=2)}\n\n"
+        f"Input:\n{json.dumps(_mapping_payload(evidence, description), indent=2)}\n\n"
         'Return JSON with keys: category, subcategory, cat_id, category_full, '
         'fx_name, keywords, sound_events, alternatives, conflict_flags, mapper_notes.'
     )
@@ -48,8 +49,10 @@ def map_metadata(
     def repair_callback(raw: str) -> tuple[str, str]:
         repair_system = SYSTEM_PROMPT + '\nFix invalid or out-of-taxonomy JSON.'
         repair_user = (
-            'Repair this mapping response. It must use only values from the taxonomy.\n\n'
+            'Repair this mapping response. It must use only values from the taxonomy and '
+            'must keep sound_events aligned with normalized_events.\n\n'
             f"Taxonomy:\n{json.dumps(taxonomy, indent=2)}\n\n"
+            f"Input:\n{json.dumps(_mapping_payload(evidence, description), indent=2)}\n\n"
             f"Invalid response:\n{raw}"
         )
         return repair_system, repair_user
@@ -65,7 +68,7 @@ def map_metadata(
     )
     repaired_for_taxonomy = False
     try:
-        validated_payload, diagnostics = _validate_mapping_payload(payload, taxonomy)
+        validated_payload, diagnostics = _validate_mapping_payload(payload, taxonomy, description)
     except ValueError:
         repaired_for_taxonomy = True
         repair_system, repair_user = repair_callback(json.dumps(payload))
@@ -77,7 +80,7 @@ def map_metadata(
             temperature=temperature,
             retries=0,
         )
-        validated_payload, diagnostics = _validate_mapping_payload(payload, taxonomy)
+        validated_payload, diagnostics = _validate_mapping_payload(payload, taxonomy, description)
         provenance['attempts'] += repaired_provenance.get('attempts', 1)
         provenance['repaired'] = True
 
@@ -86,35 +89,32 @@ def map_metadata(
     return validated_payload, diagnostics, provenance
 
 
-def _evidence_payload(evidence: EvidenceBundle, description: DescriptionDetails) -> dict:
+def _mapping_payload(evidence: EvidenceBundle, description: DescriptionDetails) -> dict:
+    acoustic_traits = list(dict.fromkeys(evidence.acoustic_flags))
+    temporal_cues = list(dict.fromkeys(description.temporal_traits))
+    uncertainty_summary = list(dict.fromkeys(description.uncertainty_notes))
+
+    candidate_family_hint = ''
+    if evidence.descriptive_prompt_matches:
+        best = evidence.descriptive_prompt_matches[0]
+        candidate_family_hint = best.category_full
+
     return {
-        'top_labels': dict(list(evidence.base_label_scores.items())[:10]),
-        'prompt_matches': [
-            {
-                'prompt': item.prompt,
-                'base_label': item.base_label,
-                'category': item.category,
-                'subcategory': item.subcategory,
-                'score': item.score,
-                'modifiers': item.modifiers,
-            }
-            for item in evidence.descriptive_prompt_matches[:8]
-        ],
-        'sound_events': [
-            {
-                'label': event.label,
-                'category': event.category,
-                'confidence': event.confidence,
-            }
-            for event in evidence.sound_events[:8]
-        ],
-        'description': description.model_dump(),
+        'structured_description': description.model_dump(),
+        'compact_cues': {
+            'acoustic_traits': acoustic_traits,
+            'temporal_cues': temporal_cues,
+            'dominant_frequency_band': evidence.dominant_frequency_band,
+            'uncertainty_summary': uncertainty_summary,
+            'candidate_family_hint': candidate_family_hint,
+        },
     }
 
 
 def _validate_mapping_payload(
     payload: dict,
     taxonomy: Dict[str, Dict[str, Dict[str, str]]],
+    description: DescriptionDetails,
 ) -> tuple[dict, MappingDiagnostics]:
     category = str(payload.get('category', '')).strip()
     subcategory = str(payload.get('subcategory', '')).strip()
@@ -127,14 +127,19 @@ def _validate_mapping_payload(
         )
 
     resolved = taxonomy[category][subcategory]
+    cleaned_sound_events = _clean_list(payload.get('sound_events', []))
+    if not cleaned_sound_events:
+        cleaned_sound_events = _clean_list(description.normalized_events)
+
     cleaned = {
         'category': category,
         'subcategory': subcategory,
         'cat_id': resolved['cat_id'],
         'category_full': resolved['category_full'],
         'fx_name': str(payload.get('fx_name', '')).strip()[:50] or subcategory.title(),
-        'keywords': _clean_list(payload.get('keywords', [])),
-        'sound_events': _clean_list(payload.get('sound_events', [])),
+        'keywords': _clean_list(payload.get('keywords', []))
+        or _clean_list(description.keyword_candidates),
+        'sound_events': cleaned_sound_events,
     }
 
     diagnostics = MappingDiagnostics(

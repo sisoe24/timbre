@@ -26,7 +26,8 @@ from .analysis.event_detector import (SoundEvent, detect_events,
                                       detect_events_from_full_clip)
 from .analysis.metadata_mapper import map_metadata
 from .analysis.feature_extractor import AcousticFeatures, extract_features
-from .analysis.description_generator import generate_description
+from .analysis.description_generator import (render_description,
+                                             generate_description)
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,7 @@ class AudioAnalysisPipeline:
         events = self._detect_events(af, full_scores)
         evidence = self._build_evidence_bundle(full_scores, prompt_scores, events, features)
 
-        description_details, description_provenance = generate_description(
+        structured_description, description_provenance = generate_description(
             evidence,
             backend=self.config.get('description_backend', 'openai'),
             model=self.config.get('description_model', 'gpt-4o-mini'),
@@ -141,7 +142,7 @@ class AudioAnalysisPipeline:
         )
         mapped, mapping_diagnostics, mapping_provenance = map_metadata(
             evidence,
-            description_details,
+            structured_description,
             taxonomy=self.taxonomy,
             backend=self.config.get('metadata_backend', 'openai'),
             model=self.config.get('metadata_model', 'gpt-4o-mini'),
@@ -154,7 +155,7 @@ class AudioAnalysisPipeline:
             af=af,
             features=features,
             evidence=evidence,
-            description_details=description_details,
+            structured_description=structured_description,
             mapped=mapped,
             mapping_diagnostics=mapping_diagnostics,
             llm_provenance=LLMProvenance(
@@ -340,7 +341,7 @@ class AudioAnalysisPipeline:
         af: AudioFile,
         features: AcousticFeatures,
         evidence: EvidenceBundle,
-        description_details: DescriptionDetails,
+        structured_description: DescriptionDetails,
         mapped: dict,
         mapping_diagnostics: MappingDiagnostics,
         llm_provenance: LLMProvenance,
@@ -399,6 +400,38 @@ class AudioAnalysisPipeline:
             user_data=self.ucs_user_data,
         )
         top_labels = dict(list(evidence.base_label_scores.items())[:10])
+        classification_confidence = self._compute_classification_confidence(
+            evidence, mapped, mapping_diagnostics,
+        )
+        description_confidence = self._compute_description_confidence(
+            evidence, structured_description,
+        )
+        metadata_confidence = self._compute_metadata_confidence(
+            classification_confidence, mapping_diagnostics,
+        )
+        confidence = round(
+            max(
+                0.0,
+                min(
+                    1.0,
+                    (
+                        0.45 * classification_confidence
+                        + 0.25 * description_confidence
+                        + 0.30 * metadata_confidence
+                    ),
+                ),
+            ),
+            3,
+        )
+        review_threshold = float(self.config.get('review_confidence_threshold', 0.45))
+        review_required = any(
+            value < review_threshold
+            for value in (
+                classification_confidence,
+                description_confidence,
+                metadata_confidence,
+            )
+        ) or bool(mapping_diagnostics.conflict_flags)
 
         return AudioAnalysisRecord(
             file_name=af.file_name,
@@ -407,17 +440,21 @@ class AudioAnalysisPipeline:
             cat_id=mapped['cat_id'],
             category_full=mapped['category_full'],
             fx_name=mapped['fx_name'],
-            description=description_details.description,
+            description=render_description(structured_description),
             keywords=mapped['keywords'],
-            sound_events=mapped['sound_events'],
-            confidence=self._compute_confidence(evidence, mapped, mapping_diagnostics),
+            sound_events=mapped['sound_events'] or structured_description.normalized_events,
+            confidence=confidence,
+            classification_confidence=classification_confidence,
+            description_confidence=description_confidence,
+            metadata_confidence=metadata_confidence,
+            review_required=review_required,
             creator_id=self.ucs_creator_id,
             source_id=self.ucs_source_id,
             user_data=self.ucs_user_data,
             suggested_filename=suggested_filename,
             top_labels=top_labels,
             evidence=evidence,
-            description_details=description_details,
+            structured_description=structured_description,
             mapping_diagnostics=mapping_diagnostics,
             llm_provenance=llm_provenance,
             metadata=metadata,
@@ -425,7 +462,7 @@ class AudioAnalysisPipeline:
             analysis_provenance=analysis_provenance,
         )
 
-    def _compute_confidence(
+    def _compute_classification_confidence(
         self,
         evidence: EvidenceBundle,
         mapped: dict,
@@ -466,4 +503,38 @@ class AudioAnalysisPipeline:
             - conflict_penalty
             - alt_penalty
         )
+        return round(max(0.0, min(1.0, confidence)), 3)
+
+    def _compute_description_confidence(
+        self,
+        evidence: EvidenceBundle,
+        description: DescriptionDetails,
+    ) -> float:
+        primary_score = next(iter(evidence.base_label_scores.values()), 0.0)
+        acoustic_support = min(1.0, 0.2 * len(evidence.acoustic_flags))
+        structure_support = 0.0
+        if description.primary_action:
+            structure_support += 0.3
+        if description.primary_source:
+            structure_support += 0.2
+        if description.normalized_events:
+            structure_support += 0.2
+        uncertainty_penalty = min(0.35, 0.1 * len(description.uncertainty_notes))
+        confidence = (
+            0.45 * primary_score
+            + 0.20 * min(1.0, structure_support)
+            + 0.20 * acoustic_support
+            + 0.15 * min(1.0, 0.1 * len(description.keyword_candidates))
+            - uncertainty_penalty
+        )
+        return round(max(0.0, min(1.0, confidence)), 3)
+
+    def _compute_metadata_confidence(
+        self,
+        classification_confidence: float,
+        diagnostics: MappingDiagnostics,
+    ) -> float:
+        conflict_penalty = min(0.35, 0.08 * len(diagnostics.conflict_flags))
+        alt_penalty = 0.06 * min(3, len(diagnostics.ranked_alternatives))
+        confidence = classification_confidence - conflict_penalty - alt_penalty
         return round(max(0.0, min(1.0, confidence)), 3)

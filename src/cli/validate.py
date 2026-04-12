@@ -33,10 +33,10 @@ You are an expert audio metadata reviewer specialising in the Universal Category
 Your job is to review a single audio analysis record and check it for:
 1. Keyword relevance  — do the keywords accurately reflect the description and sound events?
 2. Keyword redundancy — are any keywords duplicates or near-duplicates?
-3. Category / subcategory fit — does the UCS category and subcategory match the evidence bundle?
+3. Category / subcategory fit — does the UCS category and subcategory match the structured description?
 4. fx_name accuracy — does the short title (~25 chars) correctly summarise the sound?
-5. sound_events consistency — do the temporal events match what the evidence and description say?
-6. Confidence plausibility — is the confidence score reasonable given the evidence quality?
+5. sound_events consistency — do the temporal events match what the structured description says?
+6. Confidence plausibility — are the split confidence scores and overall confidence reasonable?
 7. Mapping diagnostics — do the conflict flags and alternatives indicate unresolved ambiguity?
 
 UCS reference (top-level categories):
@@ -72,7 +72,9 @@ def build_user_message(record: dict) -> str:
     relevant = {k: record.get(k) for k in [
         'file_name', 'category', 'subcategory', 'cat_id', 'category_full',
         'fx_name', 'description', 'keywords', 'sound_events', 'confidence',
-        'evidence', 'description_details', 'mapping_diagnostics', 'llm_provenance',
+        'classification_confidence', 'description_confidence', 'metadata_confidence',
+        'review_required', 'structured_description', 'mapping_diagnostics',
+        'validation_summary',
     ]}
     return (
         'Please review this audio analysis record:\n\n'

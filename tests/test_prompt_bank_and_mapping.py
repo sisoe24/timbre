@@ -99,11 +99,17 @@ def test_metadata_mapper_repairs_out_of_taxonomy_response(monkeypatch) -> None:
     mapped, diagnostics, provenance = map_metadata(
         _evidence(),
         DescriptionDetails(
-            description='A sharp metallic hit.',
-            salient_attributes=['sharp', 'metallic'],
-            uncertain_attributes=[],
+            primary_action='impact',
+            secondary_actions=[],
+            primary_source='metal object',
+            secondary_sources=[],
+            texture_traits=['sharp', 'metallic'],
+            temporal_traits=['single'],
+            environment_traits=[],
+            uncertainty_notes=[],
             negative_claims=[],
             keyword_candidates=['metal', 'impact'],
+            normalized_events=['metal impact'],
         ),
         taxonomy=_taxonomy(),
         backend='openai',
@@ -116,3 +122,99 @@ def test_metadata_mapper_repairs_out_of_taxonomy_response(monkeypatch) -> None:
     assert mapped['cat_id'] == 'IMPMtl'
     assert diagnostics.repair_attempted is True
     assert provenance['attempts'] == 2
+
+
+def test_metadata_mapper_prompt_excludes_raw_clap_labels_for_cane_mangia(monkeypatch) -> None:
+    prompts: list[str] = []
+
+    def fake_complete_json(**kwargs):
+        prompts.append(kwargs['user_prompt'])
+        return ({
+            'category': 'FOOD & DRINK',
+            'subcategory': 'EATING',
+            'cat_id': 'ignored',
+            'category_full': 'ignored',
+            'fx_name': 'Eating Sounds',
+            'keywords': ['eating', 'chewing'],
+            'sound_events': ['eating', 'chewing'],
+            'alternatives': [],
+            'conflict_flags': [],
+            'mapper_notes': 'clean mapping',
+        }, {'backend': 'openai', 'model': 'gpt', 'attempts': 1, 'repaired': False})
+
+    monkeypatch.setattr('timbre.analysis.metadata_mapper.complete_json', fake_complete_json)
+
+    evidence = EvidenceBundle(
+        base_label_scores={'dog eating': 0.31, 'pumping': 0.28, 'footsteps': 0.22},
+        descriptive_prompt_matches=[
+            PromptEvidence(
+                prompt='repeated eating sounds',
+                base_label='dog eating',
+                category='FOOD & DRINK',
+                subcategory='EATING',
+                cat_id='FOODEat',
+                category_full='FOOD & DRINK-EATING',
+                modifiers=['repeated'],
+                score=0.41,
+            )
+        ],
+        sound_events=[
+            EvidenceEvent(
+                label='pumping',
+                category='MACHINES',
+                start_time=0.0,
+                end_time=0.6,
+                confidence=0.52,
+            )
+        ],
+        acoustic_flags=['noisy', 'sparse'],
+        dominant_frequency_band='mid',
+    )
+    description = DescriptionDetails(
+        primary_action='eating',
+        secondary_actions=['chewing'],
+        primary_source='animal mouth',
+        secondary_sources=[],
+        texture_traits=['wet', 'close'],
+        temporal_traits=['repeated'],
+        environment_traits=['indoors'],
+        uncertainty_notes=['background movement may be unrelated'],
+        negative_claims=['no clear machinery source'],
+        keyword_candidates=['eating', 'chewing', 'animal'],
+        normalized_events=['eating', 'chewing'],
+    )
+
+    mapped, _, _ = map_metadata(
+        evidence,
+        description,
+        taxonomy={
+            'FOOD & DRINK': {
+                'EATING': {'cat_id': 'FOODEat', 'category_full': 'FOOD & DRINK-EATING'}
+            }
+        },
+        backend='openai',
+        model='gpt',
+        temperature=0.1,
+        retries=0,
+    )
+
+    assert mapped['category'] == 'FOOD & DRINK'
+    assert prompts
+    assert 'structured_description' in prompts[0]
+    assert 'compact_cues' in prompts[0]
+    assert 'top_labels' not in prompts[0]
+    assert 'prompt_matches' not in prompts[0]
+    assert 'pumping' not in prompts[0]
+
+
+def test_description_details_coerces_scalar_and_dict_list_fields() -> None:
+    details = DescriptionDetails.model_validate({
+        'primary_action': 'eating',
+        'temporal_traits': {'start_time': 0.0, 'end_time': 8.0},
+        'environment_traits': 'military',
+        'uncertainty_notes': 'Confidence levels vary across sound events.',
+    })
+
+    assert details.temporal_traits == ['start_time=0.0', 'end_time=8.0']
+    assert details.environment_traits == ['military']
+    assert details.uncertainty_notes == ['Confidence levels vary across sound events.']
