@@ -12,4 +12,4 @@ rsync -avz \
   --filter='+ scripts/' \
   --filter='- *' \
   ./ \
-  "root@$HOST:~/audio_analyzer/"
+  "root@$HOST:~/timbre/"

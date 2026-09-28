@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import yaml
 import pytest
 
 from timbre.output_paths import resolve_output_paths
@@ -236,3 +237,76 @@ def test_profile_definition_returns_metadata_and_overrides(
     assert definition['metadata']['label'] == 'Fast'
     assert definition['metadata']['description'] == 'Quick pass profile.'
     assert definition['overrides']['analysis']['hop_seconds'] == 1.0
+
+
+@pytest.mark.parametrize('profile,active,explicit,expected', [
+    (None, False, False, 'vocabulary.yaml'),
+    ('fast', False, False, 'profile.yaml'),
+    ('fast', True, False, 'active.yaml'),
+    ('fast', True, True, 'explicit.yaml'),
+])
+def test_vocab_selection_respects_profile_and_override_precedence(
+    temp_config: tuple[Path, Path],
+    monkeypatch: pytest.MonkeyPatch,
+    profile: str | None,
+    active: bool,
+    explicit: bool,
+    expected: str,
+) -> None:
+    """Vocabulary selection uses the effective profile unless overridden."""
+    config_path, _ = temp_config
+    for name in ('profile.yaml', 'active.yaml', 'explicit.yaml'):
+        _write_vocab(config_path.parent / name)
+    document = yaml.safe_load(config_path.read_text())
+    document['profiles']['fast']['model'] = {'vocab_file': 'profile.yaml'}
+    config_path.write_text(yaml.safe_dump(document))
+    monkeypatch.setattr(
+        'timbre.config_loader.get_active_vocab_path',
+        lambda: config_path.parent / 'active.yaml' if active else None,
+    )
+
+    cfg = load_config(
+        config_path=config_path,
+        profile_name=profile,
+        vocab_path=config_path.parent / 'explicit.yaml' if explicit else None,
+    )
+
+    assert Path(cfg['vocab_path']) == config_path.parent / expected
+    assert cfg['vocab_source'] == ('explicit' if explicit else 'active' if active else 'config')
+
+
+def test_llm_settings_and_fingerprint_follow_effective_profile(
+    temp_config: tuple[Path, Path],
+) -> None:
+    """The analyzer receives the selected provider, model, and temperature."""
+    config_path, vocab_path = temp_config
+    document = yaml.safe_load(config_path.read_text())
+    document['profiles']['fast']['llm'] = {
+        'backend': 'ollama', 'model': 'local-model', 'temperature': 0.7,
+    }
+    config_path.write_text(yaml.safe_dump(document))
+    cfg = load_config(config_path, vocab_path, profile_name='fast')
+
+    assert (cfg['llm_backend'], cfg['llm_model'], cfg['llm_temperature']) == (
+        'ollama', 'local-model', 0.7,
+    )
+    for key, value in (
+        ('llm_backend', 'anthropic'), ('llm_model', 'other-model'), ('llm_temperature', 0.2),
+    ):
+        changed = dict(cfg, **{key: value})
+        refresh_runtime_metadata(changed)
+        assert changed['profile_fingerprint'] != cfg['profile_fingerprint']
+
+
+@pytest.mark.parametrize('legacy_key', ['description_backend', 'metadata_model'])
+def test_legacy_llm_settings_require_explicit_migration(
+    temp_config: tuple[Path, Path], legacy_key: str,
+) -> None:
+    """Old two-stage settings cannot silently select the default provider."""
+    config_path, vocab_path = temp_config
+    document = yaml.safe_load(config_path.read_text())
+    document['base']['llm'] = {legacy_key: 'old-setting'}
+    config_path.write_text(yaml.safe_dump(document))
+
+    with pytest.raises(ValueError, match='llm.backend, llm.model, and llm.temperature'):
+        load_config(config_path, vocab_path)

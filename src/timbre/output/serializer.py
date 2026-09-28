@@ -302,12 +302,9 @@ def _record_to_markdown(r: AudioAnalysisRecord) -> str:
         '',
         '## LLM Provenance',
         '',
-        f"- Description: `{r.llm_provenance.description_backend}/{r.llm_provenance.description_model}` "
-        f"(attempts={r.llm_provenance.description_attempts}, repaired={r.llm_provenance.description_repaired})"
-        if r.llm_provenance else '- Description: —',
-        f"- Metadata: `{r.llm_provenance.metadata_backend}/{r.llm_provenance.metadata_model}` "
-        f"(attempts={r.llm_provenance.metadata_attempts}, repaired={r.llm_provenance.metadata_repaired})"
-        if r.llm_provenance else '- Metadata: —',
+        f"- Analysis: `{r.llm_provenance.backend}/{r.llm_provenance.model}` "
+        f"(attempts={r.llm_provenance.attempts}, repaired={r.llm_provenance.repaired})"
+        if r.llm_provenance else '- Analysis: —',
         '',
         '## Acoustic Summary',
         '',

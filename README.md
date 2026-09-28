@@ -93,7 +93,7 @@ Everything is designed for **cataloging accuracy** — no emotion analysis, no c
 ## Project Structure
 
 ```
-audio_analyzer/
+timbre/
 ├── timbre.py                   # Root CLI entrypoint
 ├── analyze.py                  # Compatibility wrapper for single-file CLI
 ├── batch_process.py            # Compatibility wrapper for batch CLI
@@ -164,7 +164,7 @@ than CPU-only.
 ### Setup
 
 ```bash
-cd audio_analyzer
+cd timbre
 bash setup_mac.sh
 ```
 
@@ -187,7 +187,7 @@ PyTorch installation is still platform-specific for setup:
 Example:
 
 ```bash
-cd audio_analyzer
+cd timbre
 poetry install
 poetry run timbre analyze samples/0_sample.wav
 ```
@@ -411,10 +411,10 @@ ssh root@194.68.245.147 -p 22017 -i ~/.ssh/id_ed25519
 
 ### Step 2 — Upload the project with scp
 
-From your local machine, in the directory **containing** `audio_analyzer/`:
+From your local machine, in the directory **containing** `timbre/`:
 
 ```bash
-scp -P 22017 -i ~/.ssh/id_ed25519 -r ./audio_analyzer root@194.68.245.147:~/
+scp -P 22017 -i ~/.ssh/id_ed25519 -r ./timbre root@194.68.245.147:~/
 ```
 
 > The `-P` flag (uppercase) sets the port for scp — note this differs from
@@ -423,7 +423,7 @@ scp -P 22017 -i ~/.ssh/id_ed25519 -r ./audio_analyzer root@194.68.245.147:~/
 To also upload audio samples:
 
 ```bash
-scp -P 22017 -i ~/.ssh/id_ed25519 -r ./my_samples root@194.68.245.147:~/audio_analyzer/samples/
+scp -P 22017 -i ~/.ssh/id_ed25519 -r ./my_samples root@194.68.245.147:~/timbre/samples/
 ```
 
 ---
@@ -432,7 +432,7 @@ scp -P 22017 -i ~/.ssh/id_ed25519 -r ./my_samples root@194.68.245.147:~/audio_an
 
 ```bash
 ssh root@194.68.245.147 -p 22017 -i ~/.ssh/id_ed25519
-cd ~/audio_analyzer
+cd ~/timbre
 bash setup_runpod.sh
 ```
 
@@ -479,12 +479,12 @@ again. Because scp always overwrites, it's safe to re-run:
 
 ```bash
 # Re-upload only the src/ folder (faster than uploading everything)
-scp -P 22017 -i ~/.ssh/id_ed25519 -r ./audio_analyzer/src root@194.68.245.147:~/audio_analyzer/
+scp -P 22017 -i ~/.ssh/id_ed25519 -r ./timbre/src root@194.68.245.147:~/timbre/
 
 # Or re-upload specific files
 scp -P 22017 -i ~/.ssh/id_ed25519 \
-  ./audio_analyzer/src/timbre/models/clap_tagger.py \
-  root@194.68.245.147:~/audio_analyzer/src/timbre/models/
+  ./timbre/src/timbre/models/clap_tagger.py \
+  root@194.68.245.147:~/timbre/src/timbre/models/
 ```
 
 ---
@@ -495,7 +495,7 @@ Copy the outputs folder back to your local machine:
 
 ```bash
 scp -P 22017 -i ~/.ssh/id_ed25519 -r \
-  root@194.68.245.147:~/audio_analyzer/outputs \
+  root@194.68.245.147:~/timbre/outputs \
   ./outputs_from_pod
 ```
 
@@ -503,9 +503,9 @@ Or just the catalog files:
 
 ```bash
 scp -P 22017 -i ~/.ssh/id_ed25519 \
-  root@194.68.245.147:~/audio_analyzer/outputs/catalog.md \
-  root@194.68.245.147:~/audio_analyzer/outputs/catalog.csv \
-  root@194.68.245.147:~/audio_analyzer/outputs/batch_results.json \
+  root@194.68.245.147:~/timbre/outputs/catalog.md \
+  root@194.68.245.147:~/timbre/outputs/catalog.csv \
+  root@194.68.245.147:~/timbre/outputs/batch_results.json \
   ./outputs_from_pod/
 ```
 
@@ -528,8 +528,8 @@ Then you can use shorthand for everything:
 
 ```bash
 ssh runpod-audio
-scp -r ./audio_analyzer runpod-audio:~/
-scp -r runpod-audio:~/audio_analyzer/outputs ./outputs_from_pod
+scp -r ./timbre runpod-audio:~/
+scp -r runpod-audio:~/timbre/outputs ./outputs_from_pod
 ```
 
 ---
@@ -693,6 +693,12 @@ base:
     min_confidence: 0.25
     top_k_categories: 5
 
+  llm:
+    backend: "openai"
+    model: "gpt-4o-mini"
+    temperature: 0.1
+    retry_count: 1
+
   output:
     output_dir: "./out"
     save_per_file_markdown: true
@@ -750,6 +756,18 @@ python timbre.py analyze samples/0_sample.wav --validate \
 Inline `--validate` checks the in-memory generated record before any analysis
 files are written. Use `timbre validate --input ...` when you want to review
 previously saved JSON artifacts offline.
+
+LLM analysis uses one `llm.backend`, `llm.model`, and `llm.temperature` setting.
+Replace the old `description_*` and `metadata_*` keys with these settings;
+legacy keys now produce a configuration error.
+
+Model-loading failures stop analysis. Select `--profile compact_model` explicitly
+to use the smaller CLAP model. If a previous run used automatic model fallback,
+rebuild its cache with `timbre vocab cache --force` before reusing it.
+
+Batch analysis rejects input files with the same output stem before loading a
+model. Rename those inputs or analyze them separately with different
+`--output-dir` values to keep their JSON records distinct.
 
 ### `config/vocabulary.yaml`
 

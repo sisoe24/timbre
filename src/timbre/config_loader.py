@@ -65,10 +65,9 @@ PROFILE_FINGERPRINT_KEYS = (
     'top_k_categories',
     'vocab_sha256',
     'prompt_bank_version',
-    'description_backend',
-    'description_model',
-    'metadata_backend',
-    'metadata_model',
+    'llm_backend',
+    'llm_model',
+    'llm_temperature',
 )
 
 
@@ -341,6 +340,10 @@ def load_config(
         }
     """
     config_path = Path(config_path or DEFAULT_CONFIG_PATH)
+    raw_cfg = _load_yaml(config_path)
+    cfg, resolved_profile_name, profile_source, available_profiles = (
+        resolve_effective_config(raw_cfg, profile_name=profile_name)
+    )
 
     # Resolve vocab_path: explicit arg > active vocab context > config.yaml > default
     if vocab_path is None:
@@ -349,8 +352,7 @@ def load_config(
             vocab_path = active_vocab_path
             vocab_source = 'active'
         else:
-            cfg_peek = _load_yaml(config_path)
-            vocab_file = cfg_peek.get('model', {}).get('vocab_file')
+            vocab_file = cfg.get('model', {}).get('vocab_file')
             if vocab_file:
                 vocab_path = config_path.parent / vocab_file
                 vocab_source = 'config'
@@ -361,10 +363,6 @@ def load_config(
         vocab_source = 'explicit'
     vocab_path = Path(vocab_path)
 
-    raw_cfg = _load_yaml(config_path)
-    cfg, resolved_profile_name, profile_source, available_profiles = (
-        resolve_effective_config(raw_cfg, profile_name=profile_name)
-    )
     vocab = _load_yaml(vocab_path)
 
     # --- Flatten UCS vocabulary into lookup dicts -------------------------
@@ -399,6 +397,11 @@ def load_config(
     log_cfg = cfg.get('logging', {})
     ucs_cfg = cfg.get('ucs', {})
     llm_cfg = cfg.get('llm', {})
+    if any(key.startswith(('description_', 'metadata_')) for key in llm_cfg):
+        raise ValueError(
+            'Replace llm.description_* and llm.metadata_* settings with '
+            'llm.backend, llm.model, and llm.temperature for the single analysis call.'
+        )
 
     model_id = model_cfg.get('model_id', 'laion/larger_clap_general')
     resolved_config_path = config_path.resolve()
@@ -476,12 +479,9 @@ def load_config(
         'ucs_source_id': ucs_cfg.get('source_id', 'NONE'),
         'ucs_user_data': ucs_cfg.get('user_data', ''),
         # LLM
-        'description_backend': llm_cfg.get('description_backend', 'openai'),
-        'description_model': llm_cfg.get('description_model', 'gpt-4o-mini'),
-        'description_temperature': llm_cfg.get('description_temperature', 0.1),
-        'metadata_backend': llm_cfg.get('metadata_backend', 'openai'),
-        'metadata_model': llm_cfg.get('metadata_model', 'gpt-4o-mini'),
-        'metadata_temperature': llm_cfg.get('metadata_temperature', 0.1),
+        'llm_backend': llm_cfg.get('backend', 'openai'),
+        'llm_model': llm_cfg.get('model', 'gpt-4o-mini'),
+        'llm_temperature': llm_cfg.get('temperature', 0.1),
         'llm_retry_count': llm_cfg.get('retry_count', 1),
         # Output
         'output': output_cfg,

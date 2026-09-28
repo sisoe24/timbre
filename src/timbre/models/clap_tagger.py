@@ -32,9 +32,6 @@ logger = logging.getLogger(__name__)
 # Default model — can be overridden via config
 DEFAULT_MODEL_ID = 'laion/larger_clap_general'
 
-# Fallback (smaller, faster) model if the larger one is unavailable
-FALLBACK_MODEL_ID = 'laion/clap-htsat-unfused'
-
 # CLAP was trained at 48 kHz — always resample to this before passing audio
 CLAP_SAMPLE_RATE = 48_000
 
@@ -80,18 +77,8 @@ class CLAPTagger:
 
         logger.info('Loading CLAP model: %s on %s', self.model_id, self.device)
 
-        try:
-            self._processor = ClapProcessor.from_pretrained(self.model_id)
-            self._model = ClapModel.from_pretrained(self.model_id)
-        except Exception as exc:
-            logger.warning(
-                "Failed to load '%s' (%s). Falling back to '%s'.",
-                self.model_id,
-                exc,
-                FALLBACK_MODEL_ID,
-            )
-            self._processor = ClapProcessor.from_pretrained(FALLBACK_MODEL_ID)
-            self._model = ClapModel.from_pretrained(FALLBACK_MODEL_ID)
+        self._processor = ClapProcessor.from_pretrained(self.model_id)
+        self._model = ClapModel.from_pretrained(self.model_id)
 
         if self.fp16:
             self._model = self._model.half()

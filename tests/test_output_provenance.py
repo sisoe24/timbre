@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from timbre.output.schema import (AudioMetadata, AcousticSummary,
-                                  AnalysisProvenance, AudioAnalysisRecord)
+from timbre.output.schema import (AudioMetadata, LLMProvenance,
+                                  AcousticSummary, AnalysisProvenance,
+                                  AudioAnalysisRecord)
 from timbre.output.serializer import save_csv, save_markdown
 from timbre.output.catalog_builder import build_catalog_markdown
 
@@ -25,6 +26,9 @@ def _build_record(profile_name: str, fingerprint: str) -> AudioAnalysisRecord:
         user_data='',
         suggested_filename=f'IMPMtl_Metal Impact_UNKNOWN_NONE_{profile_name}',
         top_labels={'metallic impact': 0.82},
+        llm_provenance=LLMProvenance(
+            backend='ollama', model='local-model', attempts=2, repaired=True,
+        ),
         metadata=AudioMetadata(
             file_name=f'{profile_name}.wav',
             file_path=f'/tmp/{profile_name}.wav',
@@ -76,6 +80,8 @@ def test_serializer_outputs_include_profile_provenance(tmp_path: Path) -> None:
     assert 'Profile' in markdown_text
     assert 'expfast123456' in markdown_text
     assert 'Analysis Time' in markdown_text
+    assert 'ollama/local-model' in markdown_text
+    assert 'attempts=2, repaired=True' in markdown_text
 
 
 def test_catalog_groups_provenance_by_profile(tmp_path: Path) -> None:

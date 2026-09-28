@@ -4,6 +4,7 @@ import sys
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
 
+import pytest
 from click.testing import CliRunner
 
 import cli.batch as batch_cli
@@ -356,3 +357,40 @@ def test_batch_help_does_not_advertise_multi_profile_features() -> None:
     assert '--all-profiles' not in result.output
     assert '--list-profiles' not in result.output
     assert '--profile TEXT' in result.output
+
+
+@pytest.mark.parametrize('second_name', ['other/impact.wav', 'impact.flac', 'IMPACT.wav'])
+def test_batch_rejects_output_collisions_before_model_loading(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, second_name: str,
+) -> None:
+    """Distinct inputs cannot overwrite the same per-file JSON artifact."""
+    paths = [tmp_path / 'impact.wav', tmp_path / second_name]
+    saved = _install_command_fakes(monkeypatch, tmp_path, discovered_audio_paths=paths)
+
+    def unexpected_load() -> None:
+        pytest.fail('Model loading must not start for colliding output paths')
+
+    monkeypatch.setattr(sys.modules['timbre.pipeline'].AudioAnalysisPipeline,
+                        'load_model', staticmethod(unexpected_load))
+    result = CliRunner().invoke(batch_main, [str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert 'Output filename collision' in result.output
+    assert saved == []
+
+
+def test_batch_does_not_count_failed_writes_as_successful_records(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    """A failed output write does not enter the aggregate success count."""
+    _install_command_fakes(monkeypatch, tmp_path, discovered_audio_paths=[tmp_path / 'impact.wav'])
+
+    def fail_write(*args: object, **kwargs: object) -> None:
+        raise OSError('disk full')
+
+    monkeypatch.setattr(sys.modules['timbre.output.serializer'], 'save_json', fail_write)
+    result = CliRunner().invoke(batch_main, [str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert 'Analyzed 0/1 files' in result.output
+    assert 'No records produced' in result.output

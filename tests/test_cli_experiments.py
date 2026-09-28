@@ -4,6 +4,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
+from cli.main import main
 from cli.batch import main as batch_main
 from cli.analyze import main as analyze_main
 from cli.profile import main as profile_main
@@ -61,6 +62,14 @@ def test_analyze_help_omits_legacy_profile_listing_flags() -> None:
     assert result.exit_code == 0
     assert '--list-profiles' not in result.output
     assert '--all-profiles' not in result.output
+
+
+def test_validate_is_registered_on_root_command() -> None:
+    """The documented validation command is reachable from the root CLI."""
+    result = CliRunner().invoke(main, ['validate', '--help'])
+
+    assert result.exit_code == 0
+    assert '--input' in result.output
 
 
 def test_batch_help_omits_legacy_profile_listing_flags() -> None:

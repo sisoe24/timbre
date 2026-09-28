@@ -117,6 +117,17 @@ def main(
     if limit:
         audio_paths = audio_paths[:limit]
 
+    output_names: dict[str, str] = {}
+    for path in audio_paths:
+        output_name = f'{Path(path).stem}.json'.casefold()
+        if output_name in output_names:
+            raise click.ClickException(
+                f'Output filename collision: {output_names[output_name]} and {path} '
+                f'both write {output_name}. Rename the inputs or analyze them separately '
+                'with different --output-dir values.'
+            )
+        output_names[output_name] = str(path)
+
     cfg = load_config(config_path=config, vocab_path=vocab, profile_name=profile)
     if no_windowed:
         cfg['use_windowed_analysis'] = False
@@ -192,8 +203,8 @@ def main(
                         )
                     })
 
-                records.append(record)
                 save_json(record, output_paths['json_dir'], full=full)
+                records.append(record)
             except Exception as exc:
                 failed += 1
                 if not skip_errors:

@@ -22,7 +22,7 @@ base:
     fp16: true
 
     # Vocabulary file (relative to this config file's directory).
-    vocab_file: "vocabulary.yaml"
+    vocab_file: "vocabulary_enriched.yaml"
 
     # Path to the pre-computed label embedding cache (.pt file).
     # Resolved relative to the project root and fingerprinted by model+vocab.
@@ -88,16 +88,13 @@ base:
     log_file: null
 
   # -------------------------------------------------------------------------
-  # LLM generation and mapping settings
+  # Single-call LLM analysis settings
   # -------------------------------------------------------------------------
   llm:
     prompt_bank_version: "v1"
-    description_backend: "openai"
-    description_model: "gpt-4o-mini"
-    description_temperature: 0.1
-    metadata_backend: "openai"
-    metadata_model: "gpt-4o-mini"
-    metadata_temperature: 0.1
+    backend: "openai"
+    model: "gpt-4o-mini"
+    temperature: 0.1
     retry_count: 1
 
 profiles:
